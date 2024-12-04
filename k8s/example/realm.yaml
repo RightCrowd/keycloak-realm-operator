@@ -7,7 +7,7 @@ spec:
   displayName: Funny Haha
   pruneRealm: true
   clients:
-    - id: funnt-client
+    - id: funny-client
       name: Super Funny Client
       type: oidc
       clientAuthenticationEnabled: true

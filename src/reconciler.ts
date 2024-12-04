@@ -27,9 +27,23 @@ export async function handleK8sResourceUpdate(resourceName: string, objDetails: 
 }
 
 export async function reconcileResource (resourceName: string, objDetails: z.output<typeof zCustomResourceIn>) {
-    if (await kcClient.getRealmById(objDetails.spec.realmId) == null) {
-        await kcClient.createRealm(objDetails.spec.realmId)
+    const realmId = objDetails.spec.realmId
+    if (await kcClient.getRealmById(realmId) == null) {
+        await kcClient.createRealm(realmId)
     }
+
+    const actualClients = await kcClient.getRealmManagedClients(realmId)
+    objDetails.spec.clients?.forEach(async (clientConfig) => {
+        if (actualClients.find(actualClient => actualClient.id === clientConfig.id) == null) {
+            await kcClient.createClient(realmId, {
+                id: `${realmId}-${clientConfig.id}`,
+                name: clientConfig.name,
+                protocol: 'openid-connect',
+                clientId: clientConfig.id,
+                publicClient: clientConfig.clientAuthenticationEnabled,
+            })
+        }
+    })
 
     await updateStatus(resourceName, {
         'lastOperatorStatusUpdate': new Date().toISOString()

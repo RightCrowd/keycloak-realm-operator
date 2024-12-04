@@ -30,6 +30,8 @@ spec:
                     properties:
                       id:
                         type: string
+                      name:
+                        type: string
                       enabled:
                         type: boolean
                       type:
@@ -41,17 +43,19 @@ spec:
                       secretTargets:
                         type: array
                         items:
-                          namespace:
-                            type: string
-                          name:
-                            type: string
-                          clientIdPropertyName:
-                            type: string
-                          clientSecretPropertyName:
-                            type: string
-                        required:
-                          - namespace
-                          - name
+                          type: object
+                          properties:
+                            namespace:
+                              type: string
+                            name:
+                              type: string
+                            clientIdPropertyName:
+                              type: string
+                            clientSecretPropertyName:
+                              type: string
+                          required:
+                            - namespace
+                            - name
                     required:
                       - id
                       - name
