@@ -10,7 +10,8 @@ I needed something to apply this all to. The drift of Keycloak realms in our clu
 
 ## Aim
 - Create, update and deleted (CUD) Keycloak realms and their configurations via Kubernetes resources.
-- CUD clients in these realms and sync their clientIds and clientSecrets back into Kubernetes secrets
+- CUD clients in these realms
+- Sync Keycloak client credentials (clientIds and clientSecrets) back into Kubernetes secrets
 
 ## Current status
 - [x] Create and delete realms based on a custom Kubernetes resource (`managedkeycloakrealms.k8s.rightcrowd.com`)
