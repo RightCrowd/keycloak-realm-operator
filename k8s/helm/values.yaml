@@ -1,0 +1,14 @@
+keycloak:
+  url:
+  username:
+    value: nil
+    # valueFrom:
+    #   secretKeyRef:
+    #     name:
+    #     key:
+  password:
+    value: nil
+    # valueFrom:
+    #   secretKeyRef:
+    #     name:
+    #     key:

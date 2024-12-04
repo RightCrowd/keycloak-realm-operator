@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operator-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operator
+  template:
+    metadata:
+      labels:
+        app: operator
+    spec:
+      serviceAccountName: managed-keycloak-realm-operator
+      automountServiceAccountToken: true
+      containers:
+      - name: operator
+        image: operator
+        env:
+          - name: KEYCLOAK_URL
+            value: {{ .Values.keycloak.url }}
+          - name: KEYCLOAK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: keycloak-secrets
+                key: username
+          - name: KEYCLOAK_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: keycloak-secrets
+                key: password
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi

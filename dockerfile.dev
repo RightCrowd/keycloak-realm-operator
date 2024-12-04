@@ -1,0 +1,6 @@
+FROM denoland/deno AS runner
+COPY ./deno.* /app/
+COPY ./src /app/src
+WORKDIR /app
+ENV DENO_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+CMD deno task dev

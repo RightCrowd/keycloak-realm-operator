@@ -1,0 +1,6 @@
+keycloak:
+  url: https://iam.rcw.evertdespiegeleer.com
+  username:
+    value: admin
+  password:
+    value: topsecretpassword
