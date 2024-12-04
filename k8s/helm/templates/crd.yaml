@@ -23,6 +23,39 @@ spec:
                   type: string
                 pruneRealm:
                   type: boolean
+                clients:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      enabled:
+                        type: boolean
+                      type:
+                        type: string
+                        enum:
+                          - oidc
+                      clientAuthenticationEnabled:
+                        type: boolean
+                      secretTargets:
+                        type: array
+                        items:
+                          namespace:
+                            type: string
+                          name:
+                            type: string
+                          clientIdPropertyName:
+                            type: string
+                          clientSecretPropertyName:
+                            type: string
+                        required:
+                          - namespace
+                          - name
+                    required:
+                      - id
+                      - name
+                      - type
               required:
                 - realmId
             status:

@@ -6,3 +6,12 @@ spec:
   realmId: funny
   displayName: Funny Haha
   pruneRealm: true
+  clients:
+    - id: funnt-client
+      name: Super Funny Client
+      type: oidc
+      clientAuthenticationEnabled: true
+      secretTargets:
+        - namespace: weird-namespace
+          name: synced-kc-client-secret
+

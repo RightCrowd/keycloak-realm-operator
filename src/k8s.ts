@@ -7,7 +7,19 @@ import { handleK8sResourceDeletion, handleK8sResourceUpdate, handleK8sResourceCr
 const zCrdSpec = z.object({
   realmId: z.string(),
   displayName: z.string().optional(),
-  pruneRealm: z.boolean().optional()
+  pruneRealm: z.boolean().optional(),
+  clients: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    type: z.enum(['oidc']),
+    clientAuthenticationEnabled: z.boolean().optional(),
+    secretTargets: z.array(z.object({
+      namespace: z.string(),
+      name: z.string(),
+      clientIdPropertyName: z.string().optional().default('clientId'),
+      clientSecretPropertyName: z.string().optional().default('clientSecret')
+    })).optional()
+  })).optional()
 })
 
 export const zCrdStatusIn = z.object({
