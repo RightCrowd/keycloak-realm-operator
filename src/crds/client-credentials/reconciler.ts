@@ -1,5 +1,5 @@
-import { CUSTOMRESOURCE_GROUP, CustomResourceIn } from "./schemas.ts";
-import { k8sApiPods } from "../../k8s.ts";
+import { CUSTOMRESOURCE_GROUP, type CustomResourceIn, type CustomResourceOut, CUSTOMRESOURCE_VERSION, CUSTOMRESOURCE_PLURAL } from "./schemas.ts";
+import { k8sApiPods, k8sApiMC } from "../../k8s.ts";
 import { V1Secret } from "npm:@kubernetes/client-node";
 import { type ClientRepresentation, KeycloakClient } from "../../keycloak.ts";
 import { log } from "../../util.ts";
@@ -112,3 +112,30 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
         },
     });
 };
+
+// TODO: ⬇️ Unused and untested
+export const cleanup = async () => {
+    const namespaces = (await k8sApiPods.listNamespace()).body.items
+    const secrets: V1Secret[] = []
+    const customResources: CustomResourceOut[] = []
+    for (const namespace of namespaces) {
+        if (namespace.metadata?.name != null) {
+            const ns = namespace.metadata.name
+            secrets.push(...(await k8sApiPods.listNamespacedSecret(ns)).body.items)
+            customResources.push(...(await k8sApiMC.listNamespacedCustomObject(CUSTOMRESOURCE_GROUP, CUSTOMRESOURCE_VERSION, ns, CUSTOMRESOURCE_PLURAL)).body as CustomResourceOut[])
+        }
+    }
+    const managedSecrets = secrets.filter(s => s.metadata?.annotations?.[sourceAnnotationKey] != null)
+
+    const lingeringManagedSecrets = managedSecrets.filter(s => {
+        if (s.metadata?.name == null || s.metadata?.namespace == null) {
+            return true
+        }
+        const matchExists = customResources.some(cr => cr.spec.targetSecretName === s.metadata!.name! && cr.metadata.namespace === s.metadata!.namespace!)
+        return !matchExists
+    })
+
+    for (const secret of lingeringManagedSecrets) {
+        await k8sApiPods.deleteNamespacedSecret(secret.metadata!.name!, secret.metadata!.namespace!)
+    }
+}
