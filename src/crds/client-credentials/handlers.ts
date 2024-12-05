@@ -76,6 +76,7 @@ export async function updateStatus(
 }
 
 export async function startWatching() {
+    /* Watch client credentials custom resource */
     await watcher.watch(
         `/apis/${CUSTOMRESOURCE_GROUP}/${CUSTOMRESOURCE_VERSION}/${CUSTOMRESOURCE_PLURAL}`,
         {},
@@ -85,4 +86,19 @@ export async function startWatching() {
             process.exit(1);
         },
     );
+    
+    /* Watch managed secrets in order to act immediatly if one gets deteled or modified */
+    // await watcher.watch(
+    //     `/apis/v1/secrets`,
+    //     {},
+    //     (phase: string, apiObj: any) => {
+    //         if (phase === 'DELETED' || phase === 'MODIFIED') {
+    //             console.log(apiObj)
+    //         }
+    //     },
+    //     (err) => {
+    //         log(`Connection closed. ${err}`);
+    //         process.exit(1);
+    //     },
+    // );
 }
