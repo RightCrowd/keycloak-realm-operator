@@ -5,9 +5,9 @@ import { log } from "./util.ts";
 
 const managedAttributeName = 'rcw-keycloak-realm-operator-managed'
 
-type RealmRepresentation = NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>['realms']['findOne']>>>
+export type RealmRepresentation = NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>['realms']['findOne']>>>
 
-type ClientRepresentation = NonNullable<RealmRepresentation['clients']>[number]
+export type ClientRepresentation = NonNullable<RealmRepresentation['clients']>[number]
 
 const isManagedRealm = (realm: RealmRepresentation) => {
     return realm.attributes?.[managedAttributeName] === 'true'
@@ -146,6 +146,18 @@ export class KeycloakClient {
         await this.ensureAuthed()
         const realm = await this.getRealmByIdOrThrow(realmId)
         return (realm.clients ?? []).filter(isManagedClient)
+    }
+
+    async getRealmClientByClientIdOrThrow (realmId: string, clientId: string) {
+        await this.ensureAuthed()
+        const clients = await this.client.clients.find({
+            realm: realmId
+        })
+        const client = clients.find(c => c.clientId === clientId)
+        if (client == null) {
+            throw new Error(`Client with id ${clientId} in realm ${realmId} does not exist`)
+        }
+        return client
     }
 
     async getRealmClientByIdOrThrow (realmId: string, clientId: string) {
