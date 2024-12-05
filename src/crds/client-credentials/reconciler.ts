@@ -1,4 +1,4 @@
-import { CUSTOMRESOURCE_GROUP, type CustomResourceIn, type CustomResourceOut, CUSTOMRESOURCE_VERSION, CUSTOMRESOURCE_PLURAL } from "./schemas.ts";
+import { CUSTOMRESOURCE_GROUP, type CustomResourceIn, type CustomResourceOut, CUSTOMRESOURCE_VERSION, CUSTOMRESOURCE_PLURAL, zCustomResourceIn } from "./schemas.ts";
 import { k8sApiPods, k8sApiMC } from "../../k8s.ts";
 import { V1Secret } from "npm:@kubernetes/client-node";
 import { type ClientRepresentation, KeycloakClient } from "../../keycloak.ts";
@@ -10,6 +10,7 @@ const sourceAnnotationKey =
     `${CUSTOMRESOURCE_GROUP}/keycloak-realm-operator-source`;
 
 export const reconcileResource = async (apiObj: CustomResourceIn) => {
+    log(`Reconciling CR of type ${CUSTOMRESOURCE_PLURAL}, name "${apiObj.metadata.name}" in namespace "${apiObj.metadata.namespace}"`)
     let currentSecret: V1Secret | undefined;
     try {
         currentSecret = (await k8sApiPods.readNamespacedSecret(
@@ -113,7 +114,18 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
     });
 };
 
-// TODO: ⬇️ Unused and untested
+export const reconcileAllResources = async () => {
+    const namespaces = (await k8sApiPods.listNamespace()).body.items
+    const customResources: CustomResourceOut[] = []
+    for (const namespace of namespaces) {
+        if (namespace.metadata?.name != null) {
+            const ns = namespace.metadata.name
+            customResources.push(...((await k8sApiMC.listNamespacedCustomObject(CUSTOMRESOURCE_GROUP, CUSTOMRESOURCE_VERSION, ns, CUSTOMRESOURCE_PLURAL)).body as {items: CustomResourceOut[]}).items)
+        }
+    }
+    await Promise.all(customResources.map(cr => reconcileResource(zCustomResourceIn.parse(cr))))
+}
+
 export const cleanup = async () => {
     const namespaces = (await k8sApiPods.listNamespace()).body.items
     const secrets: V1Secret[] = []
