@@ -6,7 +6,7 @@ import { scheduleJobs as scheduleClientSecretsReconciliation } from './client-cr
 
 export const startAllWatchers = async () => {
     await Promise.all([
-        // startWatchingManagedRealms(),
+        startWatchingManagedRealms(),
         startWatchingClientCredentials(),
     ])
 }
