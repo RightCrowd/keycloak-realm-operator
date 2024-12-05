@@ -16,9 +16,8 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
             apiObj.spec.targetSecretName,
             apiObj.metadata.namespace,
         )).body;
-    } catch (error) {
+    } catch (_error) {
         // Secret does not exist yet
-        log(String(error))
     }
 
     const getKcClient = async () => {

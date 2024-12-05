@@ -3,7 +3,7 @@ import { startWatching as startWatchingClientCredentials } from "./client-creden
 
 export const startAllWatchers = async () => {
     await Promise.all([
-        // startWatchingManagedRealms(),
+        startWatchingManagedRealms(),
         startWatchingClientCredentials(),
     ])
 }
