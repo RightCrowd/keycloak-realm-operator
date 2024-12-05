@@ -15,6 +15,7 @@ I needed something to apply this all to. The drift of Keycloak realms in our clu
 
 ## Current status
 - [x] Create and delete realms based on a custom Kubernetes resource (`managedkeycloakrealms.k8s.rightcrowd.com`)
+- [x] K8s secrets can be created and updated based on Keycloak secrets
 
 ## Local Development
 - Run the [RightCrowd localdev cluster](https://gitlab.com/rightcrowd/platform-infra/-/tree/main/clusters?ref_type=heads).

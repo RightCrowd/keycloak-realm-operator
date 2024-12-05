@@ -12,12 +12,13 @@ const sourceAnnotationKey =
 export const reconcileResource = async (apiObj: CustomResourceIn) => {
     let currentSecret: V1Secret | undefined;
     try {
-        await k8sApiPods.readNamespacedSecret(
+        currentSecret = (await k8sApiPods.readNamespacedSecret(
             apiObj.spec.targetSecretName,
             apiObj.metadata.namespace,
-        );
-    } catch (_error) {
+        )).body;
+    } catch (error) {
         // Secret does not exist yet
+        log(String(error))
     }
 
     const getKcClient = async () => {
@@ -28,6 +29,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
                 apiObj.spec.clientId,
             );
         } catch (_err) {
+            console.error(_err)
             // Client does not exist
         }
         if (targettedKcClient == null) {
@@ -60,26 +62,24 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
                 `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not posess id or secret`,
             );
         }
-        // TODO: ⬇️ This doesn't seem to work
-        await k8sApiPods.patchNamespacedSecret(
+
+        await k8sApiPods.replaceNamespacedSecret(
             apiObj.spec.targetSecretName,
             apiObj.metadata.namespace,
             {
+                apiVersion: "v1",
+                kind: "Secret",
+                metadata: {
+                    name: apiObj.spec.targetSecretName,
+                    annotations: {
+                        [sourceAnnotationKey]: apiObj.metadata.name,
+                    },
+                },
                 type: "Opaque",
                 data: {
-                    [apiObj.spec.keys.clientIdProperty]: clientId,
-                    [apiObj.spec.keys.clientSecretProperty]: clientSecret,
-                    [apiObj.spec.keys.realmProperty]: apiObj.spec.realm,
-                },
-            },
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            {
-                headers: {
-                    "Content-Type": "application/merge-patch+json",
+                    [apiObj.spec.keys.clientIdProperty]: btoa(clientId),
+                    [apiObj.spec.keys.clientSecretProperty]: btoa(clientSecret),
+                    [apiObj.spec.keys.realmProperty]: btoa(apiObj.spec.realm),
                 },
             },
         );
