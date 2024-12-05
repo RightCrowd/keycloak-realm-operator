@@ -32,12 +32,12 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
             console.error(_err)
             // Client does not exist
         }
-        if (targettedKcClient == null) {
-            // TODO: Do something in case the KC client does not exist
-            throw new Error(
-                `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not exist`,
-            );
-        }
+        // if (targettedKcClient == null) {
+        //     // TODO: Do something in case the KC client does not exist
+        //     throw new Error(
+        //         `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not exist`,
+        //     );
+        // }
         return targettedKcClient;
     };
 
@@ -55,12 +55,18 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
         // Secret exists and is owned by this operator
         // Update the secret with the new data
         const targettedKcClient = await getKcClient();
-        const { clientId, secret: clientSecret } = targettedKcClient;
+        const clientId = targettedKcClient?.clientId;
+        const clientSecret = targettedKcClient?.secret;
         if (clientId == null || clientSecret == null) {
-            // TODO: Do something in case the KC client does not have a clientId or secret
-            throw new Error(
-                `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not posess id or secret`,
-            );
+            if (apiObj.spec.fallbackStrategy === 'skip') {
+                log(`Keycloak credentials not found for ${apiObj.metadata.name} in namespace ${apiObj.metadata.namespace}. FallbackStrategy is 'skip', so skipping.`)
+                return;
+            }
+            if (apiObj.spec.fallbackStrategy === 'error') {
+                throw new Error(
+                    `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not posess id or secret, or client does not exist`,
+                );
+            }
         }
 
         await k8sApiPods.replaceNamespacedSecret(

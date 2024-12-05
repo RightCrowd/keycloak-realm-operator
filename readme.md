@@ -17,7 +17,8 @@ I needed something to apply this all to. The drift of Keycloak realms in our clu
 - [x] Create and delete realms based on a custom Kubernetes resource (`managedkeycloakrealms.k8s.rightcrowd.com`)
 - [x] K8s secrets can be created and updated based on Keycloak secrets
 - [x] Managed k8s secrets can be deleted when the related custom resource is deleted
-- [x] Every minute, a reconciliation loop and a cleanup loop run for the client-credentials custom resource 
+- [x] Every minute, a reconciliation loop and a cleanup loop run for the client-credentials custom resource (`keycloakclientcredentials.k8s.rightcrowd.com`)
+- [x] client-credentials CR fallbackStrategy is taken into account
 
 ## Local Development
 - Run the [RightCrowd localdev cluster](https://gitlab.com/rightcrowd/platform-infra/-/tree/main/clusters?ref_type=heads).
