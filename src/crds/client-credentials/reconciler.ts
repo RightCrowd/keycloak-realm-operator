@@ -122,7 +122,7 @@ export const cleanup = async () => {
         if (namespace.metadata?.name != null) {
             const ns = namespace.metadata.name
             secrets.push(...(await k8sApiPods.listNamespacedSecret(ns)).body.items)
-            customResources.push(...(await k8sApiMC.listNamespacedCustomObject(CUSTOMRESOURCE_GROUP, CUSTOMRESOURCE_VERSION, ns, CUSTOMRESOURCE_PLURAL)).body as CustomResourceOut[])
+            customResources.push(...((await k8sApiMC.listNamespacedCustomObject(CUSTOMRESOURCE_GROUP, CUSTOMRESOURCE_VERSION, ns, CUSTOMRESOURCE_PLURAL)).body as {items: CustomResourceOut[]}).items)
         }
     }
     const managedSecrets = secrets.filter(s => s.metadata?.annotations?.[sourceAnnotationKey] != null)

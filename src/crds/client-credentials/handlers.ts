@@ -10,6 +10,7 @@ import {
 } from "./schemas.ts";
 import process from "node:process";
 import { reconcileResource } from "./reconciler.ts";
+import { scheduleJobNow as scheduleSecretsCleanupJobNow } from './secretsCleanupQueue.ts'
 
 async function onEvent(
     _phase: string,
@@ -21,6 +22,10 @@ async function onEvent(
 
     if (phase === 'ADDED' || phase === 'MODIFIED') {
         await reconcileResource(parsedApiObj)
+    }
+    if (phase === 'DELETED') {
+        log('Scheduling secrets cleanup job now')
+        await scheduleSecretsCleanupJobNow()
     }
 }
 
