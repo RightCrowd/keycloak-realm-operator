@@ -3,15 +3,29 @@ import { jwtDecode } from "npm:jwt-decode";
 import { getConfig } from './config.ts';
 import { log } from "./util.ts";
 
-type RealmRepresentation = NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>['realms']['findOne']>>>
+const managedAttributeName = 'rcw-keycloak-realm-operator-managed'
+
+export type RealmRepresentation = NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>['realms']['findOne']>>>
+
+export type ClientRepresentation = NonNullable<RealmRepresentation['clients']>[number]
 
 const isManagedRealm = (realm: RealmRepresentation) => {
-    return realm.attributes?.['rcw-keycloak-realm-operator-managed'] === 'true'
+    return realm.attributes?.[managedAttributeName] === 'true'
+}
+
+const isManagedClient = (client: ClientRepresentation) => {
+    return client.attributes?.[managedAttributeName] === 'true'
 }
 
 const throwIfNotManaged = (realm: RealmRepresentation) => {
     if (!isManagedRealm(realm)) {
         throw new Error(`Realm with id ${realm.realm} is not managed`)
+    }
+}
+
+const throwIfNotManagedClient = (client: ClientRepresentation) => {
+    if (!isManagedClient(client)) {
+        throw new Error(`Client with id ${client.id} is not managed`)
     }
 }
 
@@ -98,12 +112,12 @@ export class KeycloakClient {
         if (exisingRealm != null) {
             throw new Error(`Realm with id ${id} already exists`)
         }
+        const attributes: Record<string, string> = {}
+        attributes[managedAttributeName] = 'true'
         await this.client.realms.create({
             // id,
             realm: id,
-            attributes: {
-                'rcw-keycloak-realm-operator-managed': 'true'
-            }
+            attributes
         })
     }
 
@@ -111,12 +125,12 @@ export class KeycloakClient {
         await this.ensureAuthed()
         const realm = await this.getRealmByIdOrThrow(id);
         throwIfNotManaged(realm)
+        const attributes: Record<string, string> = {}
+        attributes[managedAttributeName] = 'false'
         await this.client.realms.update({
             realm: id
         }, {
-            attributes: {
-                'rcw-keycloak-realm-operator-managed': 'false'
-            }
+            attributes
         })
     }
 
@@ -126,5 +140,58 @@ export class KeycloakClient {
         throwIfNotManaged(realm)
         await this.client.realms.del({ realm: id })
         log(`Deleted realm with id ${id}`)
+    }
+
+    async getRealmManagedClients (realmId: string) {
+        await this.ensureAuthed()
+        const realm = await this.getRealmByIdOrThrow(realmId)
+        return (realm.clients ?? []).filter(isManagedClient)
+    }
+
+    async getRealmClientByClientIdOrThrow (realmId: string, clientId: string) {
+        await this.ensureAuthed()
+        const clients = await this.client.clients.find({
+            realm: realmId
+        })
+        const client = clients.find(c => c.clientId === clientId)
+        if (client == null) {
+            throw new Error(`Client with id ${clientId} in realm ${realmId} does not exist`)
+        }
+        return client
+    }
+
+    async getRealmClientByIdOrThrow (realmId: string, clientId: string) {
+        await this.ensureAuthed()
+        const client = await this.client.clients.findOne({
+            id: clientId,
+            realm: realmId
+        })
+        if (client == null) {
+            throw new Error(`Client with id ${clientId} in realm ${realmId} does not exist`)
+        }
+        return client
+    }
+
+    async createClient (realmId: string, client: ClientRepresentation) {
+        await this.ensureAuthed()
+        await this.getRealmByIdOrThrow(realmId)
+        const attributes: Record<string, string> = {}
+        attributes[managedAttributeName] = 'true'
+        await this.client.clients.create({
+            realm: realmId,
+            ...client,
+            attributes
+        })
+    }
+
+    async updateClient (realmId: string, clientId: string, clientDetails: ClientRepresentation) {
+        await this.ensureAuthed()
+        await this.getRealmByIdOrThrow(realmId)
+        const currentClient = await this.getRealmClientByIdOrThrow(realmId, clientId)
+        throwIfNotManagedClient(currentClient)
+        await this.client.clients.update({
+            id: clientId,
+            realm: realmId,
+        }, clientDetails)
     }
 }

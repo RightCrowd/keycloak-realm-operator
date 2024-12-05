@@ -6,9 +6,7 @@ spec:
   group: k8s.rightcrowd.com
   versions:
     - name: v1alpha1
-      # Each version can be enabled/disabled by Served flag.
       served: true
-      # One and only one version must be marked as the storage version.
       storage: true
       schema:
         openAPIV3Schema:
@@ -23,6 +21,43 @@ spec:
                   type: string
                 pruneRealm:
                   type: boolean
+                clients:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      enabled:
+                        type: boolean
+                      type:
+                        type: string
+                        enum:
+                          - oidc
+                      clientAuthenticationEnabled:
+                        type: boolean
+                      secretTargets:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            namespace:
+                              type: string
+                            name:
+                              type: string
+                            clientIdPropertyName:
+                              type: string
+                            clientSecretPropertyName:
+                              type: string
+                          required:
+                            - namespace
+                            - name
+                    required:
+                      - id
+                      - name
+                      - type
               required:
                 - realmId
             status:

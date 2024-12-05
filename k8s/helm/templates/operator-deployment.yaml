@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: operator-deployment
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -30,10 +31,12 @@ spec:
               secretKeyRef:
                 name: keycloak-secrets
                 key: password
+          - name: REDIS_CONNECTION_STRING
+            value: redis://operator-redis-svc:6379
         resources:
           requests:
-            cpu: 50m
-            memory: 64Mi
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
           limits:
-            cpu: 100m
-            memory: 256Mi
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
