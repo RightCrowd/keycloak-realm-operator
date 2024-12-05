@@ -10,7 +10,8 @@ const zConfig = z.object({
       'createnamespace',
       'error'
     ]).optional().default('error'))
-    .describe('Determines what should happen in case a k8s synced to a KC client secret is to be created in a namespace that does not exist')
+    .describe('Determines what should happen in case a k8s synced to a KC client secret is to be created in a namespace that does not exist'),
+    REDIS_CONNECTION_STRING: z.string().startsWith('redis://')
 })
   
 export const getConfig = () => zConfig.parse(env)

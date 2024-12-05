@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: operator-redis-svc
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: operator-redis
+  ports:
+    - name: redis
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operator-redis
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operator-redis
+  template:
+    metadata:
+      labels:
+        app: operator-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 256Mi

@@ -1,12 +1,10 @@
 import z from "npm:zod";
-import { updateStatus, zCustomResourceIn } from "./k8s.ts";
-import { KeycloakClient } from "./keycloak.ts";
-import { log } from './util.ts';
+import { updateStatus } from "./handlers.ts";
+import { zCustomResourceIn } from "./schemas.ts";
+import { KeycloakClient } from "../../keycloak.ts";
+import { log } from '../../util.ts';
 
 const kcClient = new KeycloakClient()
-
-export async function init () {
-}
 
 export async function handleK8sResourceCreation(resourceName: string, objDetails: z.output<typeof zCustomResourceIn>) {
     console.log(`Created resource: ${resourceName}`);
@@ -48,9 +46,6 @@ export async function reconcileResource (resourceName: string, objDetails: z.out
     await updateStatus(resourceName, {
         'lastOperatorStatusUpdate': new Date().toISOString()
     })
-}
-
-export async function startReconciler() {
 }
 
 /** Perform any required deletions */

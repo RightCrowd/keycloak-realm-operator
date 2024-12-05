@@ -6,9 +6,7 @@ spec:
   group: k8s.rightcrowd.com
   versions:
     - name: v1alpha1
-      # Each version can be enabled/disabled by Served flag.
       served: true
-      # One and only one version must be marked as the storage version.
       storage: true
       schema:
         openAPIV3Schema:

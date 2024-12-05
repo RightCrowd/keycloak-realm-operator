@@ -1,0 +1,73 @@
+import z from "npm:zod";
+import { watcher, k8sApiMC } from "../../k8s.ts";
+import { log } from "../../util.ts";
+import { CUSTOMRESOURCE_GROUP, CUSTOMRESOURCE_PLURAL, CUSTOMRESOURCE_VERSION, zCrdStatusIn, zCrdStatusOut, zCustomResourceIn } from "./schemas.ts";
+import process from "node:process";
+
+async function onEvent(
+    _phase: string,
+    apiObj: z.output<typeof zCustomResourceIn>,
+  ) {
+    const phase = _phase as 'ADDED' | 'MODIFIED' | 'DELETED'
+    const status = zCrdStatusIn.parse(apiObj.status);
+    log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`)
+}
+  
+  export async function updateStatus(
+    k8sResourceName: string,
+    status: z.input<typeof zCrdStatusOut>,
+  ) {
+    const resourceFetch = await k8sApiMC.getClusterCustomObject(
+      CUSTOMRESOURCE_GROUP,
+      CUSTOMRESOURCE_VERSION,
+      CUSTOMRESOURCE_PLURAL,
+      k8sResourceName,
+    );
+    const currentObj = zCustomResourceIn.parse(resourceFetch.body);
+  
+    const crdUpdatedStatusPatch = {
+      apiVersion: currentObj.apiVersion,
+      kind: currentObj.kind,
+      metadata: {
+        name: currentObj.metadata.name,
+      },
+      status: zCrdStatusOut.parse({
+        lastOperatorStatusUpdate: new Date().toISOString(),
+        ...status,
+      }),
+    };
+  
+    try {
+      await k8sApiMC.patchClusterCustomObject(
+        CUSTOMRESOURCE_GROUP,
+        CUSTOMRESOURCE_VERSION,
+        CUSTOMRESOURCE_PLURAL,
+        k8sResourceName,
+        crdUpdatedStatusPatch,
+        undefined,
+        undefined,
+        undefined,
+        {
+          headers: {
+            "Content-Type": "application/merge-patch+json",
+          },
+        },
+      );
+    } catch (error) {
+      log("Failed to update cr status");
+      throw error;
+    }
+  }
+  
+  export async function startWatching() {
+    await watcher.watch(
+      `/apis/${CUSTOMRESOURCE_GROUP}/${CUSTOMRESOURCE_VERSION}/${CUSTOMRESOURCE_PLURAL}`,
+      {},
+      onEvent,
+      (err) => {
+        log(`Connection closed. ${err}`);
+        process.exit(1);
+      },
+    );
+  }
+  
