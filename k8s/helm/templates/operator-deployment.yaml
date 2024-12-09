@@ -17,7 +17,7 @@ spec:
       automountServiceAccountToken: true
       containers:
       - name: operator
-        image: operator
+        image: {{ .Values.operatorImage }}
         env:
           - name: KEYCLOAK_URL
             value: {{ .Values.keycloak.url }}

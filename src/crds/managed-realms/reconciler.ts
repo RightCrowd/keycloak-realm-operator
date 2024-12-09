@@ -2,59 +2,75 @@ import z from "npm:zod";
 import { updateStatus } from "./handlers.ts";
 import { zCustomResourceIn } from "./schemas.ts";
 import { KeycloakClient } from "../../keycloak.ts";
-import { log } from '../../util.ts';
+import { log } from "../../util.ts";
 
-const kcClient = new KeycloakClient()
+const kcClient = new KeycloakClient();
 
-export async function handleK8sResourceCreation(resourceName: string, objDetails: z.output<typeof zCustomResourceIn>) {
-    console.log(`Created resource: ${resourceName}`);
-    await reconcileResource(resourceName, objDetails)
+export async function handleK8sResourceCreation(
+  resourceName: string,
+  objDetails: z.output<typeof zCustomResourceIn>,
+) {
+  console.log(`Created resource: ${resourceName}`);
+  await reconcileResource(resourceName, objDetails);
 }
 
-export async function handleK8sResourceDeletion(resourceName: string, objDetails: z.output<typeof zCustomResourceIn>) {
-    if (!objDetails.spec.pruneRealm) {
-        await kcClient.markRealmUnmanaged(objDetails.spec.realmId)
+export async function handleK8sResourceDeletion(
+  resourceName: string,
+  objDetails: z.output<typeof zCustomResourceIn>,
+) {
+  if (!objDetails.spec.pruneRealm) {
+    await kcClient.markRealmUnmanaged(objDetails.spec.realmId);
+  }
+  console.log(`Deleted resource: ${resourceName}`);
+  await cleanup();
+}
+
+export async function handleK8sResourceUpdate(
+  resourceName: string,
+  objDetails: z.output<typeof zCustomResourceIn>,
+) {
+  console.log(`Updated resource: ${resourceName}`);
+  await reconcileResource(resourceName, objDetails);
+}
+
+export async function reconcileResource(
+  resourceName: string,
+  objDetails: z.output<typeof zCustomResourceIn>,
+) {
+  const realmId = objDetails.spec.realmId;
+  if (await kcClient.getRealmById(realmId) == null) {
+    await kcClient.createRealm(realmId);
+  }
+
+  const actualClients = await kcClient.getRealmManagedClients(realmId);
+  objDetails.spec.clients?.forEach(async (clientConfig) => {
+    if (
+      actualClients.find((actualClient) =>
+        actualClient.id === clientConfig.id
+      ) == null
+    ) {
+      await kcClient.createClient(realmId, {
+        id: `${realmId}-${clientConfig.id}`,
+        name: clientConfig.name,
+        protocol: "openid-connect",
+        clientId: clientConfig.id,
+        publicClient: clientConfig.clientAuthenticationEnabled,
+      });
     }
-    console.log(`Deleted resource: ${resourceName}`);
-    await cleanup();
-}
+  });
 
-export async function handleK8sResourceUpdate(resourceName: string, objDetails: z.output<typeof zCustomResourceIn>) {
-    console.log(`Updated resource: ${resourceName}`);
-    await reconcileResource(resourceName, objDetails)
-}
-
-export async function reconcileResource (resourceName: string, objDetails: z.output<typeof zCustomResourceIn>) {
-    const realmId = objDetails.spec.realmId
-    if (await kcClient.getRealmById(realmId) == null) {
-        await kcClient.createRealm(realmId)
-    }
-
-    const actualClients = await kcClient.getRealmManagedClients(realmId)
-    objDetails.spec.clients?.forEach(async (clientConfig) => {
-        if (actualClients.find(actualClient => actualClient.id === clientConfig.id) == null) {
-            await kcClient.createClient(realmId, {
-                id: `${realmId}-${clientConfig.id}`,
-                name: clientConfig.name,
-                protocol: 'openid-connect',
-                clientId: clientConfig.id,
-                publicClient: clientConfig.clientAuthenticationEnabled,
-            })
-        }
-    })
-
-    await updateStatus(resourceName, {
-        'lastOperatorStatusUpdate': new Date().toISOString()
-    })
+  await updateStatus(resourceName, {
+    "lastOperatorStatusUpdate": new Date().toISOString(),
+  });
 }
 
 /** Perform any required deletions */
 export async function cleanup() {
-    const realms = await kcClient.getManagedRealms()
-    const realmIds = realms.map(r => r.realm).filter(Boolean) as string[]
+  const realms = await kcClient.getManagedRealms();
+  const realmIds = realms.map((r) => r.realm).filter(Boolean) as string[];
 
-    for (const realmId of realmIds) {
-        log(`Deleting realm with id ${realmId}`)
-        await kcClient.deleteRealm(realmId);
-    }
+  for (const realmId of realmIds) {
+    log(`Deleting realm with id ${realmId}`);
+    await kcClient.deleteRealm(realmId);
+  }
 }

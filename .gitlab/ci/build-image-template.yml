@@ -1,0 +1,30 @@
+.buildImageTemplate:
+  tags:
+    - high-ram
+  image:
+    name: gcr.io/kaniko-project/executor:v1.21.1-debug
+    entrypoint: ['']
+  when: always
+  variables:
+    REGISTRY_URL: rightcrowd.azurecr.io
+  script:
+    - echo "Building with extra build args; ${EXTRA_BUILD_ARGUMENTS}"
+    - export IMAGE_TAGS="$VERSION $CI_COMMIT_REF_SLUG"
+    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$DOCKERHUB_AUTH\"}},\"credHelpers\":{\"rightcrowd.azurecr.io\":\"acr-env\"}}" > /kaniko/.docker/config.json
+    - mkdir -p /kaniko/.docker
+    - |
+      KANIKO_DESTINATION_SUBSTRING=""
+      for TAG in $IMAGE_TAGS; do
+          if [ -n "$TAG" ]; then
+              # If the tag is defined, append the --destination argument
+              KANIKO_DESTINATION_SUBSTRING="$KANIKO_DESTINATION_SUBSTRING--destination $REGISTRY_URL/$IMAGE_NAME:$TAG "
+          fi
+      done
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/${DOCKERFILE_LOCATION}"
+      --cache=true
+      --skip-tls-verify
+      ${KANIKO_DESTINATION_SUBSTRING}
+      --build-arg GITLAB_API_ACCESS_TOKEN="${CI_JOB_TOKEN}"
+      ${EXTRA_BUILD_ARGUMENTS}

@@ -19,3 +19,4 @@ resources:
   limits:
     cpu: 100m
     memory: 256Mi
+operatorImage: keycloak-realm-operator # (Gets replaced by Tilt or CI)

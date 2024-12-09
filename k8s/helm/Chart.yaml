@@ -3,4 +3,4 @@ name: keycloak-realm-operator-chart
 description: A k8s operator to manage Keycloak realms, their config and clients
 type: application
 version: 0.0.0
-appVersion: "0.0.0"
+appVersion: 0.0.0
