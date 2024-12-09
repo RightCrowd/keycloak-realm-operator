@@ -1,7 +1,7 @@
 keycloak:
   url:
-  username: nil
-  password: nil
+  username: {}
+  password: {}
 resources:
   requests:
     cpu: 50m
