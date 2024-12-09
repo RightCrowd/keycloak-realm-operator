@@ -20,7 +20,7 @@ build:operator-helm-chart:
   before_script:
     - apk add yq helm
   script:
-    - helm registry login --username "${AZURE_CLIENT_ID}" --password "${AZURE_CLIENT_SECRET}"
+    - helm registry login rightcrowd.azurecr.io --username "${AZURE_CLIENT_ID}" --password "${AZURE_CLIENT_SECRET}"
     - yq -i '.operatorImage = "rightcrowd.azurecr.io/keycloak-realm-operator:\(env(CI_COMMIT_TAG))"' ./k8s/helm/values.yaml
     - yq -i '.version = env(CI_COMMIT_TAG)' ./k8s/helm/Chart.yaml
     - helm package ./k8s/helm
