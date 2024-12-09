@@ -1,6 +1,6 @@
 import { validateConfig } from "./config.ts";
 import "./k8s.ts";
-import { startAllWatchers, startAllQueues } from "./crds/startWatchers.ts";
+import { startAllQueues, startAllWatchers } from "./crds/startWatchers.ts";
 import { log } from "./util.ts";
 
 async function start() {
