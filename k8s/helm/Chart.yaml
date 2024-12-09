@@ -1,5 +1,5 @@
 apiVersion: v2
-name: keycloak-realm-operator-chart
+name: keycloak-realm-operator
 description: A k8s operator to manage Keycloak realms, their config and clients
 type: application
 version: 0.0.0
