@@ -71,3 +71,4 @@ Temporary Items
 
 dist
 localdev-helm-values.yaml
+*-chart-*.tgz

@@ -1,0 +1,5 @@
+lint:
+  stage: audit
+  image: denoland/deno:2.1.3
+  script:
+    - deno task style:test
