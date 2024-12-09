@@ -4,7 +4,7 @@ import { log } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
 
 const jobName = "secretCleanup";
-const jobId = `${jobName}-job`;
+// const jobId = `${jobName}-job`;
 const jobQueueName = `${jobName}-queue`;
 
 type SecretCleanupReconcilerJobData = unknown;
@@ -52,14 +52,12 @@ export const worker = new Worker<
 );
 
 export const scheduleJobs = async () => {
-  await queue.add(
+  await queue.upsertJobScheduler(
     jobName,
-    {},
+    { pattern: "* * * * *" },
     {
-      jobId,
-      repeat: {
-        every: 60000,
-      },
+      name: jobName,
+      data: {},
     },
   );
 };

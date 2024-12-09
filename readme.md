@@ -28,3 +28,23 @@ I needed something to apply this all to. The drift of Keycloak realms in our clu
 
 ## Build operator container
 `docker build -t keycloak-realm-operator .`
+
+## Usage
+Deploy using Helm. Minimal example values file:
+```yaml
+keycloak:
+  url: https://iam.rightcrowd.dev
+  username:
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin-secret
+        key: username
+  password:
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin-secret
+        key: password
+```
+
+## Notes
+- Only the `keycloakclientcredentials.k8s.rightcrowd.com` is currently being used. `managedkeycloakrealms.k8s.rightcrowd.com` isn't yet reliable and is commented out.

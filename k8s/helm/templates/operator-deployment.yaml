@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: operator-deployment
+  name: keycloak-realm-operator-deployment
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
@@ -22,15 +22,9 @@ spec:
           - name: KEYCLOAK_URL
             value: {{ .Values.keycloak.url }}
           - name: KEYCLOAK_USERNAME
-            valueFrom:
-              secretKeyRef:
-                name: keycloak-secrets
-                key: username
+            {{- toYaml $.Values.keycloak.username | nindent 12 }}
           - name: KEYCLOAK_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: keycloak-secrets
-                key: password
+            {{- toYaml $.Values.keycloak.password | nindent 12 }}
           - name: REDIS_CONNECTION_STRING
             value: redis://operator-redis-svc:6379
         resources:

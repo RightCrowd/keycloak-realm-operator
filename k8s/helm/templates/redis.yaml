@@ -15,7 +15,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: operator-redis
+  name: keycloak-realm-operator-redis
   namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1

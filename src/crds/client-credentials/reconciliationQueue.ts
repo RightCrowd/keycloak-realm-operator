@@ -5,7 +5,7 @@ import { host, password, port, username } from "../../redis.ts";
 import { CUSTOMRESOURCE_PLURAL } from "./schemas.ts";
 
 const jobName = `${CUSTOMRESOURCE_PLURAL}-reconciliation`;
-const jobId = `${jobName}-job`;
+// const jobId = `${jobName}-job`;
 const jobQueueName = `${jobName}-queue`;
 
 type SecretCleanupReconcilerJobData = unknown;
@@ -53,14 +53,12 @@ export const worker = new Worker<
 );
 
 export const scheduleJobs = async () => {
-  await queue.add(
+  await queue.upsertJobScheduler(
     jobName,
-    {},
+    { pattern: "* * * * *" },
     {
-      jobId,
-      repeat: {
-        every: 60000,
-      },
+      name: jobName,
+      data: {},
     },
   );
 };

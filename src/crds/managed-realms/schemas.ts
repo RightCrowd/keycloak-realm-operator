@@ -21,11 +21,11 @@ export const zCrdSpec = z.object({
 });
 
 export const zCrdStatusIn = z.object({
-  "lastOperatorStatusUpdate": z.coerce.date().optional(),
+  "latestOperatorStatusUpdate": z.coerce.date().optional(),
 }).optional();
 
 export const zCrdStatusOut = z.object({
-  "lastOperatorStatusUpdate": z.string().optional(),
+  "latestOperatorStatusUpdate": z.string().optional(),
 }).optional();
 
 export const zCustomResourceIn = z.object({

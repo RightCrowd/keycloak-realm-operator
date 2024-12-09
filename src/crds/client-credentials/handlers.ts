@@ -48,7 +48,7 @@ export async function updateStatus(
       name: currentObj.metadata.name,
     },
     status: zCrdStatusOut.parse({
-      lastOperatorStatusUpdate: new Date().toISOString(),
+      latestOperatorStatusUpdate: new Date().toISOString(),
       ...status,
     }),
   };

@@ -1,17 +1,7 @@
 keycloak:
   url:
-  username:
-    value: nil
-    # valueFrom:
-    #   secretKeyRef:
-    #     name:
-    #     key:
-  password:
-    value: nil
-    # valueFrom:
-    #   secretKeyRef:
-    #     name:
-    #     key:
+  username: nil
+  password: nil
 resources:
   requests:
     cpu: 50m
@@ -19,4 +9,4 @@ resources:
   limits:
     cpu: 100m
     memory: 256Mi
-operatorImage: keycloak-realm-operator # (Gets replaced by Tilt or CI)
+operatorImage: keycloak-realm-operator # (This default gets replaced by Tilt or CI)

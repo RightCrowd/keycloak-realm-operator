@@ -63,7 +63,7 @@ spec:
             status:
               type: object
               properties:
-                lastOperatorStatusUpdate:
+                latestOperatorStatusUpdate:
                   type: string
       additionalPrinterColumns:
         - name: RealmName

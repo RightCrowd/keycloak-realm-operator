@@ -30,9 +30,9 @@ async function onEvent(
     // TODO: we can probably do something more clever ⬇️
     // If the operator updated the resource less than 500ms ago, the incoming update might simply be our own update. Let's ignore it
     if (
-      status?.lastOperatorStatusUpdate != null &&
+      status?.latestOperatorStatusUpdate != null &&
       ((new Date().getTime() -
-        new Date(status.lastOperatorStatusUpdate).getTime()) < 500)
+        new Date(status.latestOperatorStatusUpdate).getTime()) < 500)
     ) {
       log(`Ignoring own update`);
       return;
@@ -64,7 +64,7 @@ export async function updateStatus(
       name: currentObj.metadata.name,
     },
     status: zCrdStatusOut.parse({
-      lastOperatorStatusUpdate: new Date().toISOString(),
+      latestOperatorStatusUpdate: new Date().toISOString(),
       ...status,
     }),
   };

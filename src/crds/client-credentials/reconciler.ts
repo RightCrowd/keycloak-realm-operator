@@ -41,12 +41,6 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
       console.error(_err);
       // Client does not exist
     }
-    // if (targettedKcClient == null) {
-    //     // TODO: Do something in case the KC client does not exist
-    //     throw new Error(
-    //         `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not exist`,
-    //     );
-    // }
     return targettedKcClient;
   };
 
@@ -68,6 +62,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
     const targettedKcClient = await getKcClient();
     const clientId = targettedKcClient?.clientId;
     const clientSecret = targettedKcClient?.secret;
+
     if (clientId == null || clientSecret == null) {
       if (apiObj.spec.fallbackStrategy === "skip") {
         log(

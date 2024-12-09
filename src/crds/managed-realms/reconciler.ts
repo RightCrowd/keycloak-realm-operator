@@ -60,7 +60,7 @@ export async function reconcileResource(
   });
 
   await updateStatus(resourceName, {
-    "lastOperatorStatusUpdate": new Date().toISOString(),
+    "latestOperatorStatusUpdate": new Date().toISOString(),
   });
 }
 
