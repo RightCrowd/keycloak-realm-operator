@@ -23,4 +23,4 @@ build:operator-helm-chart:
     - yq -i '.operatorImage = "rightcrowd.azurecr.io/keycloak-realm-operator:\(env(CI_COMMIT_TAG))"' ./k8s/helm/values.yaml
     - yq -i '.version = env(CI_COMMIT_TAG)' ./k8s/helm/Chart.yaml
     - helm package ./k8s/helm
-    - helm push keycloak-realm-operator-chart-0.0.0.tgz oci://rightcrowd.azurecr.io/keycloak-realm-operator-chart
+    - helm push "keycloak-realm-operator-chart-$CI_COMMIT_TAG.tgz" oci://rightcrowd.azurecr.io/keycloak-realm-operator-chart
