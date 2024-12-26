@@ -1,0 +1,13 @@
+name: Code style check
+on: push
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.1.3
+      - name: lint
+        run: deno task style:test

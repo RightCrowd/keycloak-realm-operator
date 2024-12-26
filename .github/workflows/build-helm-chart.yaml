@@ -1,0 +1,65 @@
+name: Build and Publish
+
+on: push
+
+jobs:
+  build-operator-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+            images: |
+                ghcr.io/rightcrowd/keycloak-realm-operator
+            tags: |
+                type=ref,event=branch
+                type=ref,event=pr
+                type=ref,event=tag
+                type=ref,event=push tag
+  
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+            context: .
+            tags: ${{ steps.meta.outputs.tags }}
+            labels: ${{ steps.meta.outputs.labels }}
+  
+
+  build-operator-helm-chart:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod +x get_helm.sh
+          ./get_helm.sh
+
+      - name: Update Helm chart values
+        run: |
+          VERSION="${{ github.ref_name }}"
+          yq -i ".operatorImage = \"ghcr.io/rightcrowd/keycloak-realm-operator:$VERSION\"" ./k8s/helm/values.yaml
+          yq -i ".version = \"$VERSION\"" ./k8s/helm/Chart.yaml
+
+      - name: Package and push Helm chart
+        env:
+          HELM_EXPERIMENTAL_OCI: 1
+        run: |
+          VERSION="${{ github.ref_name }}"
+          helm package ./k8s/helm
+          helm push "keycloak-realm-operator-$VERSION.tgz" oci://ghcr.io/rightcrowd/helm
