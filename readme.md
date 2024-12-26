@@ -3,7 +3,7 @@ A Kubernetes operator for managing resources in Keycloak; The project aims to en
 
 > ⚠️ This is a WIP project.
 
-While there is a little bit of overlap with the [Keycloak Operator](https://www.keycloak.org/operator/installation), it mostly focusses on different concerns and can perfectly be used in conjunction with it.
+While there is a little bit of overlap with the [Keycloak Operator](https://www.keycloak.org/operator/installation), this project mostly focusses on different concerns and can perfectly be used in conjunction the Keycloak Operator (which is more focussed on the deployment of Keycloak _itself_).
 
 # Current and future features
 - [x] Sync client credentials from Keycloak to Kubernetes secrets (Implemented ✅)
