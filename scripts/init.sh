@@ -19,7 +19,11 @@ else
 fi
 
 # Copy example env files to actual env files is those don't exist yet
-[ -r .env ] && cp .env.example .env
-[ -r localdev-helm-values.yaml ] && cp localdev-helm-values.example.yaml localdev-helm-values.yaml
+if [ ! -f .env ]; then
+    cp .env.example .env
+fi
+if [ ! -f localdev-helm-values.yaml ]; then
+    cp localdev-helm-values.example.yaml localdev-helm-values.yaml
+fi
 
 echo "Good to go! 🚀"
