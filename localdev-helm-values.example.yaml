@@ -4,3 +4,4 @@ keycloak:
     value: admin
   password:
     value: topsecretpassword
+operatorImage: keycloak-realm-operator
