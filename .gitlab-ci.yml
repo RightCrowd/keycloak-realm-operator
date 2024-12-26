@@ -1,9 +1,0 @@
-stages:
-  - audit
-  - build
-  - build-manifests
-
-include:
-  - local: .gitlab/ci/build-image-template.yml
-  - local: .gitlab/ci/audit.yml
-  - local: .gitlab/ci/build.yml

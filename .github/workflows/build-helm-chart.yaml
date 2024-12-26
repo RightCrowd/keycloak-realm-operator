@@ -1,0 +1,35 @@
+name: Build and Publish helm chart
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+rc[0-9]+'
+
+jobs:
+  build-operator-helm-chart:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod +x get_helm.sh
+          ./get_helm.sh
+
+      - name: Update Helm chart values
+        run: |
+          VERSION="${{ github.ref_name }}"
+          yq -i ".operatorImage = \"ghcr.io/rightcrowd/keycloak-realm-operator:$VERSION\"" ./k8s/helm/values.yaml
+          yq -i ".version = \"$VERSION\"" ./k8s/helm/Chart.yaml
+
+      - name: Package and push Helm chart
+        env:
+          HELM_EXPERIMENTAL_OCI: 1
+        run: |
+          VERSION="${{ github.ref_name }}"
+          helm package ./k8s/helm
+          helm push "keycloak-realm-operator-$VERSION.tgz" oci://ghcr.io/rightcrowd/helm
