@@ -27,7 +27,7 @@ jobs:
                 type=ref,event=branch
                 type=ref,event=pr
                 type=ref,event=tag
-                type=ref,event=push tag
+                type=ref,event=push
   
       - name: Build and push
         uses: docker/build-push-action@v5
