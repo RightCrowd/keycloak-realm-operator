@@ -75,12 +75,11 @@ data:
 
 # Local Development
 - Make sure [Tilt](https://tilt.dev/) is installed on your machine
-- Prepare the repo by running `./scripts/init.sh`
-  > The deployment manifests (the helm chart) are housed in our [helm charts](https://github.com/RightCrowd/helm-charts/tree/main/charts/keycloak-realm-operator) repository. The init script downloads these to the `./k8s/helm` directory, from which Tilt deploys them. This allows fiddling on the manifests in a live environment locally.
 - Run the [RightCrowd localdev cluster](https://gitlab.com/rightcrowd/platform-infra/-/tree/main/clusters?ref_type=heads)
     > Note: The RightCrowd localdev cluster is an internal development tool which is not public.
     > That being said, all you essentially need for the operator to work locally is a running Kubernetes cluster with (network accessible) Keycloak in it.
-
-- Create a `.env` file and a `localdev-helm-values.yaml` file in the root of this project based on the example files
+- Prepare the repo by running `./scripts/init.sh`
+  > The deployment manifests (the helm chart) are housed in our [helm charts](https://github.com/RightCrowd/helm-charts/tree/main/charts/keycloak-realm-operator) repository. The init script downloads these to the `./k8s/helm` directory, from which Tilt deploys them. This allows fiddling on the manifests in a live environment locally.
+- Adjust the `.env` file and `localdev-helm-values.yaml` file in the root of the project as desired
 - `export KUBECONFIG=<path of your kubeconfig>`
 - `tilt up`
