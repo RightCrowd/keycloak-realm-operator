@@ -2,15 +2,10 @@ import z from "npm:zod";
 
 export const zCrdSpec = z.object({
   targetSecretName: z.string(),
-  keys: z.object({
-    clientIdProperty: z.string().optional().default("clientId"),
-    clientSecretProperty: z.string().optional().default("clientSecret"),
-    realmProperty: z.string().optional().default("realm"),
-  }).optional().default({
-    clientIdProperty: "clientId",
-    clientSecretProperty: "clientSecret",
-    realmProperty: "realm",
-  }),
+  targetSecretTemplate: z.array(z.object({
+    key: z.string(),
+    template: z.string(),
+  })).optional(),
   realm: z.string(),
   clientId: z.string(),
   fallbackStrategy: z.enum(["error", "skip"]).default("skip"),

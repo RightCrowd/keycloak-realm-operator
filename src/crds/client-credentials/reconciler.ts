@@ -10,11 +10,41 @@ import { k8sApiMC, k8sApiPods } from "../../k8s.ts";
 import { V1Secret } from "npm:@kubernetes/client-node";
 import { type ClientRepresentation, KeycloakClient } from "../../keycloak.ts";
 import { log } from "../../util.ts";
+import { parse } from "npm:@ctrl/golang-template";
 
 const kcClient = new KeycloakClient();
 
 const sourceAnnotationKey =
   `${CUSTOMRESOURCE_GROUP}/keycloak-realm-operator-source`;
+
+const generateEncodedSecretData =
+  (targetSecretTemplate?: { key: string; template: string }[]) =>
+  (realm: string, clientId: string, clientSecret: string) => {
+    type K8sSecretData = { [key: string]: string };
+    const k8sSecretData =
+      targetSecretTemplate?.reduce((acc: K8sSecretData, template) => {
+        acc[template.key] = parse(template.template, {
+          clientId,
+          clientSecret,
+          realm,
+        });
+        return acc;
+      }, {} as K8sSecretData) ?? {
+        clientId,
+        clientSecret,
+        realm,
+      };
+
+    const encodedK8sSecretData = Object.entries(k8sSecretData).reduce(
+      (acc: K8sSecretData, [key, value]) => {
+        acc[key] = btoa(value);
+        return acc;
+      },
+      {} as K8sSecretData,
+    );
+
+    return encodedK8sSecretData;
+  };
 
 export const reconcileResource = async (apiObj: CustomResourceIn) => {
   log(
@@ -88,11 +118,11 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
           },
         },
         type: "Opaque",
-        data: {
-          [apiObj.spec.keys.clientIdProperty]: btoa(clientId),
-          [apiObj.spec.keys.clientSecretProperty]: btoa(clientSecret),
-          [apiObj.spec.keys.realmProperty]: btoa(apiObj.spec.realm),
-        },
+        data: generateEncodedSecretData(apiObj.spec.targetSecretTemplate)(
+          apiObj.spec.realm,
+          clientId,
+          clientSecret,
+        ),
       },
     );
     return;
@@ -124,11 +154,11 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
       },
     },
     type: "Opaque",
-    data: {
-      [apiObj.spec.keys.clientIdProperty]: btoa(clientId),
-      [apiObj.spec.keys.clientSecretProperty]: btoa(clientSecret),
-      [apiObj.spec.keys.realmProperty]: btoa(apiObj.spec.realm),
-    },
+    data: generateEncodedSecretData(apiObj.spec.targetSecretTemplate)(
+      apiObj.spec.realm,
+      clientId,
+      clientSecret,
+    ),
   });
 };
 
