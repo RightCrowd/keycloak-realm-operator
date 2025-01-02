@@ -54,9 +54,10 @@ spec:
   clientId: cake-shop-api-client
   targetSecretName: supersecret-cake-shop-credentials
   ## ⬇️ Optional
-  # clientIdProperty: clientId
-  # clientSecretProperty: clientSecret
-  # realmProperty: realm
+  # keys:
+  #   clientIdProperty: clientId
+  #   clientSecretProperty: clientSecret
+  #   realmProperty: realm
 ```
 
 Based on this definition, the operator will fetch the credentials from Keycloak and create a  Kubernetes secret looking as follows:
