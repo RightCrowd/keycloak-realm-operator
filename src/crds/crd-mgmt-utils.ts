@@ -5,6 +5,7 @@ import { Logger } from "../util.ts";
 import { crypto } from "jsr:@std/crypto";
 import { Buffer } from "node:buffer";
 import { encodeHex } from "jsr:@std/encoding/hex";
+import { k8sApiMC } from "../k8s.ts";
 
 const logger = new Logger("crd-mgmt-utils");
 
@@ -63,4 +64,65 @@ export const validateCrHash = async (cr: ActualCRType) => {
     const actualHash = cr.metadata.annotations?.[hashAnnotationKey];
 
     return expectedHash === actualHash;
+}
+
+type CrSelector = {
+    group: string;
+    version: string;
+    plural: string;
+    name: string;
+    namespace?: string;
+}
+
+type CrUpdates = {
+    spec?: any;
+    status?: any;
+}
+export const generateCrUpdatePatch = async (selector: CrSelector, updates: CrUpdates) => {
+    const namespaced = selector.namespace != null
+
+    const currentCr = namespaced ? (await k8sApiMC.getNamespacedCustomObject(
+        selector.group,
+        selector.version,
+        selector.namespace!,
+        selector.plural,
+        selector.name,
+    )).body as ActualCRType : (await k8sApiMC.getClusterCustomObject(
+        selector.group,
+        selector.version,
+        selector.plural,
+        selector.name,
+    )).body as ActualCRType;
+
+    const updatedCr: ActualCRType = {
+        spec: {
+            ...currentCr.spec,
+            ...updates.spec,
+        },
+        status: {
+            ...currentCr.status,
+            ...updates.status,
+        },
+        metadata: {
+            annotations: currentCr.metadata.annotations
+        }
+    }
+
+    updatedCr.metadata.annotations = {
+        ...updatedCr.metadata.annotations,
+        ...await generateCrAnnotations(updatedCr)
+    }
+
+    const crdUpdatedStatusPatch = {
+        apiVersion: `${selector.group}/${selector.version}`,
+        kind: selector.plural,
+        metadata: {
+            name: selector.name,
+            annotations: updatedCr.metadata.annotations
+        },
+        spec: updatedCr.spec,
+        status: updatedCr.status,
+    };
+
+    return crdUpdatedStatusPatch
 }
