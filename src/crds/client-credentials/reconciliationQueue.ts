@@ -1,8 +1,10 @@
 import { Queue, Worker } from "npm:bullmq";
 import { reconcileAllResources } from "./reconciler.ts";
-import { log } from "../../util.ts";
+import { Logger } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
 import { CUSTOMRESOURCE_PLURAL } from "./schemas.ts";
+
+const logger = new Logger("reconciliationQueue");
 
 const jobName = `${CUSTOMRESOURCE_PLURAL}-reconciliation`;
 // const jobId = `${jobName}-job`;
@@ -32,9 +34,9 @@ export const worker = new Worker<
   jobQueueName,
   async (_job) => {
     try {
-      log(`Performing scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`);
+      logger.log(`Performing scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`);
       await reconcileAllResources();
-      log(`Finished scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`);
+      logger.log(`Finished scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`);
     } catch (error) {
       console.error(error);
       throw error;

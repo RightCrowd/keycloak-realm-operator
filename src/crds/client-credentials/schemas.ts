@@ -25,6 +25,7 @@ export const zCustomResourceIn = z.object({
   metadata: z.object({
     name: z.string(),
     namespace: z.string(),
+    annotations: z.record(z.string(), z.string()).optional(),
   }).passthrough(),
   spec: zCrdSpec,
   status: zCrdStatusIn,

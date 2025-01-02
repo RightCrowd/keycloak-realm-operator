@@ -1,6 +1,6 @@
 import z from "npm:zod";
 import { k8sApiMC, watcher } from "../../k8s.ts";
-import { log } from "../../util.ts";
+import { Logger } from "../../util.ts";
 import {
   CUSTOMRESOURCE_GROUP,
   CUSTOMRESOURCE_PLURAL,
@@ -16,12 +16,14 @@ import {
   handleK8sResourceUpdate,
 } from "./reconciler.ts";
 
+const logger = new Logger('managed-realms crd handler')
+
 async function onEvent(
   _phase: string,
   apiObj: z.output<typeof zCustomResourceIn>,
 ) {
   const phase = _phase as "ADDED" | "MODIFIED" | "DELETED";
-  log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
+  logger.log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
 
   const status = zCrdStatusIn.parse(apiObj.status);
   if (phase == "ADDED") {
@@ -34,14 +36,14 @@ async function onEvent(
       ((new Date().getTime() -
         new Date(status.latestOperatorStatusUpdate).getTime()) < 500)
     ) {
-      log(`Ignoring own update`);
+      logger.log(`Ignoring own update`);
       return;
     }
     await handleK8sResourceUpdate(apiObj.metadata.name, apiObj);
   } else if (phase == "DELETED") {
     await handleK8sResourceDeletion(apiObj.metadata.name!, apiObj);
   } else {
-    log(`Unknown event type: ${phase}`);
+    logger.log(`Unknown event type: ${phase}`);
   }
 }
 
@@ -86,7 +88,7 @@ export async function updateStatus(
       },
     );
   } catch (error) {
-    log("Failed to update cr status");
+    logger.log("Failed to update cr status");
     throw error;
   }
 }
@@ -97,7 +99,7 @@ export async function startWatching() {
     {},
     onEvent,
     (err) => {
-      log(`Connection closed. ${err}`);
+      logger.log(`Connection closed. ${err}`);
       process.exit(1);
     },
   );

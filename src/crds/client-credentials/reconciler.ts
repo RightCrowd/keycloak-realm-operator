@@ -9,8 +9,10 @@ import {
 import { k8sApiMC, k8sApiPods } from "../../k8s.ts";
 import { V1Secret } from "npm:@kubernetes/client-node";
 import { type ClientRepresentation, KeycloakClient } from "../../keycloak.ts";
-import { log } from "../../util.ts";
+import { Logger } from "../../util.ts";
 import { parse } from "npm:@ctrl/golang-template";
+
+const logger = new Logger("client-credentials reconciler");
 
 const kcClient = new KeycloakClient();
 
@@ -47,7 +49,7 @@ const generateEncodedSecretData =
   };
 
 export const reconcileResource = async (apiObj: CustomResourceIn) => {
-  log(
+  logger.log(
     `Reconciling CR of type ${CUSTOMRESOURCE_PLURAL}, name "${apiObj.metadata.name}" in namespace "${apiObj.metadata.namespace}"`,
   );
   let currentSecret: V1Secret | undefined;
@@ -81,7 +83,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
     ) {
       // Secret exists but is not owned by this operator
       // TODO: Think up some way to handle this. We simply do nothing for now
-      log(
+      logger.log(
         `Secret ${apiObj.spec.targetSecretName} in namespace ${apiObj.metadata.namespace} exists but is not owned by operator`,
       );
       return;
@@ -95,7 +97,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
 
     if (clientId == null || clientSecret == null) {
       if (apiObj.spec.fallbackStrategy === "skip") {
-        log(
+        logger.log(
           `Keycloak credentials not found for ${apiObj.metadata.name} in namespace ${apiObj.metadata.namespace}. FallbackStrategy is 'skip', so skipping.`,
         );
         return;
@@ -134,7 +136,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
   const clientSecret = targettedKcClient?.secret;
   if (clientId == null || clientSecret == null) {
     if (apiObj.spec.fallbackStrategy === "skip") {
-      log(
+      logger.log(
         `Keycloak credentials not found for ${apiObj.metadata.name} in namespace ${apiObj.metadata.namespace}. FallbackStrategy is 'skip', so skipping.`,
       );
       return;
