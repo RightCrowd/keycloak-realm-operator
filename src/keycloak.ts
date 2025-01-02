@@ -1,7 +1,9 @@
 import KcAdminClient from "npm:@keycloak/keycloak-admin-client";
 import { jwtDecode } from "npm:jwt-decode";
 import { getConfig } from "./config.ts";
-import { log } from "./util.ts";
+import { Logger } from "./util.ts";
+
+const logger = new Logger('keycloak')
 
 const managedAttributeName = "rcw-keycloak-realm-operator-managed";
 
@@ -49,21 +51,21 @@ export class KeycloakClient {
         refreshToken,
       });
     } catch (error) {
-      log("Failed to authenticate with Keycloak");
+      logger.log("Failed to authenticate with Keycloak");
       throw error;
     }
   }
 
   private async ensureAuthed() {
     if (this.client.accessToken == null) {
-      log("Authenticating against KC");
+      logger.log("Authenticating against KC");
       await this.autheticate();
       return;
     }
     const accessToken = this.client.accessToken!;
     const expirationDate = new Date(jwtDecode(accessToken).exp!);
     if (new Date().getTime() > expirationDate.getTime() - 5 * 60 * 1000) {
-      log("Refreshing KC token");
+      logger.log("Refreshing KC token");
       await this.autheticate(this.client.refreshToken);
     }
   }
@@ -143,7 +145,7 @@ export class KeycloakClient {
     const realm = await this.getRealmByIdOrThrow(id);
     throwIfNotManaged(realm);
     await this.client.realms.del({ realm: id });
-    log(`Deleted realm with id ${id}`);
+    logger.log(`Deleted realm with id ${id}`);
   }
 
   async getRealmManagedClients(realmId: string) {

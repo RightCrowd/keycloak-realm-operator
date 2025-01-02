@@ -1,6 +1,6 @@
 import z from "npm:zod";
 import { k8sApiMC, watcher } from "../../k8s.ts";
-import { log } from "../../util.ts";
+import { Logger } from "../../util.ts";
 import {
   CUSTOMRESOURCE_GROUP,
   CUSTOMRESOURCE_PLURAL,
@@ -11,6 +11,9 @@ import {
 import process from "node:process";
 import { reconcileResource } from "./reconciler.ts";
 import { scheduleJobNow as scheduleSecretsCleanupJobNow } from "./secretsCleanupQueue.ts";
+import { generateCrAnnotations, validateCrHash } from '../crd-mgmt-utils.ts';
+
+const logger = new Logger('client-credentials crd handler')
 
 async function onEvent(
   _phase: string,
@@ -18,13 +21,15 @@ async function onEvent(
 ) {
   const phase = _phase as "ADDED" | "MODIFIED" | "DELETED";
   const parsedApiObj = zCustomResourceIn.parse(apiObj);
-  log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
+  logger.log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
 
   if (phase === "ADDED" || phase === "MODIFIED") {
-    await reconcileResource(parsedApiObj);
+    if (await validateCrHash(parsedApiObj)) {
+      await reconcileResource(parsedApiObj);
+    }
   }
   if (phase === "DELETED") {
-    log("Scheduling secrets cleanup job now");
+    logger.log("Scheduling secrets cleanup job now");
     await scheduleSecretsCleanupJobNow();
   }
 }
@@ -40,17 +45,21 @@ export async function updateStatus(
     k8sResourceName,
   );
   const currentObj = zCustomResourceIn.parse(resourceFetch.body);
+  const newStatus = zCrdStatusOut.parse({
+    latestOperatorStatusUpdate: new Date().toISOString(),
+    ...status,
+  })
+
+  const annotations = await generateCrAnnotations({ spec: currentObj.spec, status: newStatus })
 
   const crdUpdatedStatusPatch = {
     apiVersion: currentObj.apiVersion,
     kind: currentObj.kind,
     metadata: {
       name: currentObj.metadata.name,
+      annotations: annotations
     },
-    status: zCrdStatusOut.parse({
-      latestOperatorStatusUpdate: new Date().toISOString(),
-      ...status,
-    }),
+    status: newStatus,
   };
 
   try {
@@ -70,7 +79,7 @@ export async function updateStatus(
       },
     );
   } catch (error) {
-    log("Failed to update cr status");
+    logger.log("Failed to update cr status");
     throw error;
   }
 }
@@ -82,7 +91,7 @@ export async function startWatching() {
     {},
     onEvent,
     (err) => {
-      log(`Connection closed. ${err}`);
+      logger.log(`Connection closed. ${err}`);
       process.exit(1);
     },
   );
@@ -93,11 +102,11 @@ export async function startWatching() {
   //     {},
   //     (phase: string, apiObj: any) => {
   //         if (phase === 'DELETED' || phase === 'MODIFIED') {
-  //             console.log(apiObj)
+  //             console.logger.log(apiObj)
   //         }
   //     },
   //     (err) => {
-  //         log(`Connection closed. ${err}`);
+  //         logger.log(`Connection closed. ${err}`);
   //         process.exit(1);
   //     },
   // );

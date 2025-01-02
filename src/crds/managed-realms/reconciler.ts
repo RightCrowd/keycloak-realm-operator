@@ -2,7 +2,9 @@ import z from "npm:zod";
 import { updateStatus } from "./handlers.ts";
 import { zCustomResourceIn } from "./schemas.ts";
 import { KeycloakClient } from "../../keycloak.ts";
-import { log } from "../../util.ts";
+import { Logger } from "../../util.ts";
+
+const logger = new Logger("managed-realms reconciler");
 
 const kcClient = new KeycloakClient();
 
@@ -10,7 +12,7 @@ export async function handleK8sResourceCreation(
   resourceName: string,
   objDetails: z.output<typeof zCustomResourceIn>,
 ) {
-  console.log(`Created resource: ${resourceName}`);
+  logger.log(`Created resource: ${resourceName}`);
   await reconcileResource(resourceName, objDetails);
 }
 
@@ -21,7 +23,7 @@ export async function handleK8sResourceDeletion(
   if (!objDetails.spec.pruneRealm) {
     await kcClient.markRealmUnmanaged(objDetails.spec.realmId);
   }
-  console.log(`Deleted resource: ${resourceName}`);
+  logger.log(`Deleted resource: ${resourceName}`);
   await cleanup();
 }
 
@@ -29,7 +31,7 @@ export async function handleK8sResourceUpdate(
   resourceName: string,
   objDetails: z.output<typeof zCustomResourceIn>,
 ) {
-  console.log(`Updated resource: ${resourceName}`);
+  logger.log(`Updated resource: ${resourceName}`);
   await reconcileResource(resourceName, objDetails);
 }
 
@@ -70,7 +72,7 @@ export async function cleanup() {
   const realmIds = realms.map((r) => r.realm).filter(Boolean) as string[];
 
   for (const realmId of realmIds) {
-    log(`Deleting realm with id ${realmId}`);
+    logger.log(`Deleting realm with id ${realmId}`);
     await kcClient.deleteRealm(realmId);
   }
 }

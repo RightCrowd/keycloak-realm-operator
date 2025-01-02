@@ -1,7 +1,9 @@
 import { Queue, Worker } from "npm:bullmq";
 import { cleanup } from "./reconciler.ts";
-import { log } from "../../util.ts";
+import { Logger } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
+
+const logger = new Logger('secretsCleanupQueue')
 
 const jobName = "secretCleanup";
 // const jobId = `${jobName}-job`;
@@ -31,9 +33,9 @@ export const worker = new Worker<
   jobQueueName,
   async (_job) => {
     try {
-      log("Performing scheduled secrets cleanup");
+      logger.log("Performing scheduled secrets cleanup");
       await cleanup();
-      log("Finished scheduled secrets cleanup");
+      logger.log("Finished scheduled secrets cleanup");
     } catch (error) {
       console.error(error);
       throw error;
