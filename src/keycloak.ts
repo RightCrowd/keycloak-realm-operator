@@ -56,7 +56,7 @@ export class KeycloakClient {
     }
   }
 
-  private async ensureAuthed() {
+  async ensureAuthed() {
     if (this.client.accessToken == null) {
       logger.log("Authenticating against KC");
       await this.autheticate();

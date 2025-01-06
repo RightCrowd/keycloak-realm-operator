@@ -37,7 +37,7 @@ const redisClient = createClient({
 
 export const getHashingSalt = async () => {
   const redisSaltKey = "crd-mgmt:hashing-salt";
-  if (!redisClient.isReady) {
+  if (!redisClient.isOpen) {
     await redisClient.connect();
   }
   let salt = await redisClient.get(redisSaltKey);
@@ -54,16 +54,17 @@ export const generateDataHash = async (data: any) => {
   const buf = await crypto.subtle.digest(
     "SHA-256",
     Buffer.from(JSON.stringify({
-      data, salt
+      data,
+      salt,
     })),
   );
   return encodeHex(buf);
-}
+};
 
 const generateCrHash = async (cr: CrDataType) => {
   return await generateDataHash({
-    spec: cr.spec
-  })
+    spec: cr.spec,
+  });
 };
 
 const hashAnnotationKey =

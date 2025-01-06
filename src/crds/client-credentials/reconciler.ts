@@ -197,7 +197,7 @@ export const reconcileAllResources = async () => {
         await reconcileResource(
           zCustomResourceIn.parse(crAndSelector.cr),
           crAndSelector.selector,
-        )
+        );
       }
     }
   }

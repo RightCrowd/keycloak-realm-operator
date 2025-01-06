@@ -11,22 +11,26 @@ import { KeycloakClient } from "../../keycloak.ts";
 import { Logger } from "../../util.ts";
 import { type CrSelector } from "../crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
-import type { RealmRepresentation } from '../../keycloak.ts';
+import type { RealmRepresentation } from "../../keycloak.ts";
 
 const logger = new Logger("managed-realm reconciler");
 
 const kcClient = new KeycloakClient();
 
 const claimAttributes = {
-  'k8s.rightcrowd.com/keycloak-realm-operator/claim': 'true'
-} satisfies Record<string, string>
+  "k8s.rightcrowd.com/keycloak-realm-operator/claim": "true",
+} satisfies Record<string, string>;
 
-const realmIsClaimed = (realm: { attributes?: RealmRepresentation['attributes'] }) => {
+const realmIsClaimed = (
+  realm: { attributes?: RealmRepresentation["attributes"] },
+) => {
   const attributes = realm.attributes ?? {};
-  const expectedAttributes = claimAttributes as Record<string, string>
-  const differ = Object.keys(expectedAttributes).some((expectedKey: string) => attributes[expectedKey] !== expectedAttributes[expectedKey])
-  return !differ
-}
+  const expectedAttributes = claimAttributes as Record<string, string>;
+  const differ = Object.keys(expectedAttributes).some((expectedKey: string) =>
+    attributes[expectedKey] !== expectedAttributes[expectedKey]
+  );
+  return !differ;
+};
 
 export const reconcileResource = async (
   apiObj: CustomResourceIn,
@@ -38,75 +42,83 @@ export const reconcileResource = async (
   );
   await updateCr(selector, { status: { state: "syncing" } });
 
-  const { spec } = apiObj
-  const { realmId: realm, displayName } = spec
+  const { spec } = apiObj;
+  const { realmId: realm, displayName } = spec;
 
+  await kcClient.ensureAuthed();
   let currentKcRealm = await kcClient.client.realms.findOne({
-    realm
-  })
+    realm,
+  });
 
   if (currentKcRealm == null) {
     // The realm does not exist yet. Let's create it
-    logger.log(`Creating and claiming Keycloak realm ${realm}`)
+    logger.log(`Creating and claiming Keycloak realm ${realm}`);
+    await kcClient.ensureAuthed();
     await kcClient.client.realms.create({
       realm,
       attributes: claimAttributes,
-      displayName
-    })
+      displayName,
+    });
+    await kcClient.ensureAuthed();
     currentKcRealm = (await kcClient.client.realms.findOne({
-      realm
-    }))!
+      realm,
+    }))!;
   }
 
-  let realmClaimed = realmIsClaimed(currentKcRealm)
+  let realmClaimed = realmIsClaimed(currentKcRealm);
   if (!realmClaimed) {
-    logger.log(`Realm ${realm} is unclaimed`)
+    logger.log(`Realm ${realm} is unclaimed`);
     if (spec.claimRealm) {
-      logger.log(`Claiming realm ${realm}`)
+      logger.log(`Claiming realm ${realm}`);
+      await kcClient.ensureAuthed();
       await kcClient.client.realms.update({ realm }, {
         attributes: {
           ...currentKcRealm.attributes,
-          ...claimAttributes
-        }
-      })
-      realmClaimed = true
+          ...claimAttributes,
+        },
+      });
+      realmClaimed = true;
     }
   }
 
   if (!realmClaimed) {
-    logger.error(`Realm ${realm} is not claimed and claiming is disabled`)
+    logger.error(`Realm ${realm} is not claimed and claiming is disabled`);
     await updateCr(selector, { status: { state: "failed" } });
-    return
+    return;
   }
 
   /*
   TODO: By performing a partial import in every reconiliciation, we're very sure the state of the realm is always turned into the desired state. However, we still have to test and make sure this isn't too heavy on Keycloak!
   */
-  await kcClient.client.realms.partialImport({
-    realm: apiObj.spec.realmId,
-    rep: spec.representation
-  })
+  if (spec.representation != null) {
+    await kcClient.ensureAuthed();
+    await kcClient.client.realms.partialImport({
+      realm: apiObj.spec.realmId,
+      rep: spec.representation,
+    });
+  }
+
   await updateCr(selector, { status: { state: "synced" } });
 };
 
 export const reconcileAllResources = async () => {
-      const crs = ((await k8sApiMC.listClusterCustomObject(
-        CUSTOMRESOURCE_GROUP,
-        CUSTOMRESOURCE_VERSION,
-        CUSTOMRESOURCE_PLURAL,
-      )).body as { items: CustomResourceIn[] }).items;
-      const crsAndSelectors = crs.map((cr) => ({
-        cr,
-        selector: makeSelector(cr.metadata.name),
-      }));
+  const crs = ((await k8sApiMC.listClusterCustomObject(
+    CUSTOMRESOURCE_GROUP,
+    CUSTOMRESOURCE_VERSION,
+    CUSTOMRESOURCE_PLURAL,
+  )).body as { items: CustomResourceIn[] }).items;
+  const crsAndSelectors = crs.map((cr) => ({
+    cr,
+    selector: makeSelector(cr.metadata.name),
+  }));
 
-      for (const crAndSelector of crsAndSelectors) {
-        await reconcileResource(
-          zCustomResourceIn.parse(crAndSelector.cr),
-          crAndSelector.selector,
-        )
-      }
+  for (const crAndSelector of crsAndSelectors) {
+    await reconcileResource(
+      zCustomResourceIn.parse(crAndSelector.cr),
+      crAndSelector.selector,
+    );
   }
+};
 
 // export const cleanup = async () => {
 //   const namespaces = (await k8sApiPods.listNamespace()).body.items;
@@ -148,4 +160,3 @@ export const reconcileAllResources = async () => {
 //     );
 //   }
 // };
-

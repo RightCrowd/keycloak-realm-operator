@@ -11,7 +11,9 @@ export const zCrdSpec = z.object({
     "Wether or not to claim management of the realm if it were to already exist in Keycloak when the CR is created",
   ),
   // TODO: ideally we'd validate this, but that's a little much for now
-  representation: z.any().describe('Realm representation following the PartialImportRealmRepresentation spec')
+  representation: z.any().describe(
+    "Realm representation following the PartialImportRealmRepresentation spec",
+  ),
 });
 
 export const zCrdStatusIn = z.object({
