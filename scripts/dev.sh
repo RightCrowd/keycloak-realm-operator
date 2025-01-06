@@ -2,17 +2,13 @@
 
 set -e
 
-rm -rf $(pwd)/k3d-localdev-cluster/live-manifests
-mkdir -p $(pwd)/k3d-localdev-cluster/live-manifests
-cp -r $(pwd)/k3d-localdev-cluster/manifests/* $(pwd)/k3d-localdev-cluster/live-manifests
-
 CLUSTER_NAME="keycloak-realm-operator-localdev"
 trap 'tilt down && k3d cluster delete $CLUSTER_NAME' EXIT
 
 # Delete the cluster if it were to still exist
 k3d cluster delete $CLUSTER_NAME || true
 
-k3d cluster create $CLUSTER_NAME --volume $(pwd)/k3d-localdev-cluster/live-manifests:/var/lib/rancher/k3s/server/manifests --wait --api-port 6550 -p "8081:8080@loadbalancer"
+k3d cluster create $CLUSTER_NAME --volume $(pwd)/k3d-localdev-cluster/manifests:/var/lib/rancher/k3s/server/manifests --wait --api-port 6550 -p "8081:8080@loadbalancer"
 k3d kubeconfig get $CLUSTER_NAME > $(pwd)/k3d-localdev-cluster/kubeconfig.yaml
 
 export KUBECONFIG=$(pwd)/k3d-localdev-cluster/kubeconfig.yaml

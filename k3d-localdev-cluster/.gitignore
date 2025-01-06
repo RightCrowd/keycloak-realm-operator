@@ -1,2 +1,3 @@
-live-manifests
+manifests/*
+!manifests/custom
 kubeconfig.yaml

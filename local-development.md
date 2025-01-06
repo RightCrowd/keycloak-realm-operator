@@ -29,5 +29,5 @@ The script exposes a kubeconfig file which can be used to connect to the cluster
 - `./scripts/init.sh`
 - `./scripts/dev.sh`
 - A local cluster is running with keycloak and the (auto-updating) operator deployed in it 🎉
-  Keycloak is exposed at [http://localhost:8081](http://localhost:8081)
+  Keycloak is exposed at [http://localhost:8081](http://localhost:8081), credentials: `admin:admin`
   To connect to the cluster: `export KUBECONFIG=$(pwd)/k3d-localdev-cluster/kubeconfig.yaml`
