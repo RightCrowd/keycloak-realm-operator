@@ -3,7 +3,7 @@ import { jwtDecode } from "npm:jwt-decode";
 import { getConfig } from "./config.ts";
 import { Logger } from "./util.ts";
 
-const logger = new Logger('keycloak')
+const logger = new Logger("keycloak");
 
 const managedAttributeName = "rcw-keycloak-realm-operator-managed";
 

@@ -1,7 +1,7 @@
 import { Console } from "node:console";
 import process from "node:process";
 
-type ConsoleInstance = InstanceType<typeof Console>
+type ConsoleInstance = InstanceType<typeof Console>;
 
 export class Logger extends Console {
   constructor(private readonly scope: string) {
@@ -14,8 +14,8 @@ export class Logger extends Console {
       scope: this.scope,
       timestamp: new Date().toISOString(),
       message,
-      ...extraData
-    })
+      ...extraData,
+    });
   }
 
   override log(message: string, extraData?: unknown) {

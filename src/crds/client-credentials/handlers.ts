@@ -11,9 +11,9 @@ import {
 import process from "node:process";
 import { reconcileResource } from "./reconciler.ts";
 import { scheduleJobNow as scheduleSecretsCleanupJobNow } from "./secretsCleanupQueue.ts";
-import { generateCrAnnotations, validateCrHash } from '../crd-mgmt-utils.ts';
+import { generateCrAnnotations, validateCrHash } from "../crd-mgmt-utils.ts";
 
-const logger = new Logger('client-credentials crd handler')
+const logger = new Logger("client-credentials crd handler");
 
 async function onEvent(
   _phase: string,
@@ -48,16 +48,19 @@ export async function updateStatus(
   const newStatus = zCrdStatusOut.parse({
     latestOperatorStatusUpdate: new Date().toISOString(),
     ...status,
-  })
+  });
 
-  const annotations = await generateCrAnnotations({ spec: currentObj.spec, status: newStatus })
+  const annotations = await generateCrAnnotations({
+    spec: currentObj.spec,
+    status: newStatus,
+  });
 
   const crdUpdatedStatusPatch = {
     apiVersion: currentObj.apiVersion,
     kind: currentObj.kind,
     metadata: {
       name: currentObj.metadata.name,
-      annotations: annotations
+      annotations: annotations,
     },
     status: newStatus,
   };

@@ -34,7 +34,9 @@ export const worker = new Worker<
   jobQueueName,
   async (_job) => {
     try {
-      logger.log(`Performing scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`);
+      logger.log(
+        `Performing scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`,
+      );
       await reconcileAllResources();
       logger.log(`Finished scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`);
     } catch (error) {

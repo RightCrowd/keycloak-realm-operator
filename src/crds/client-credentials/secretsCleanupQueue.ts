@@ -3,7 +3,7 @@ import { cleanup } from "./reconciler.ts";
 import { Logger } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
 
-const logger = new Logger('secretsCleanupQueue')
+const logger = new Logger("secretsCleanupQueue");
 
 const jobName = "secretCleanup";
 // const jobId = `${jobName}-job`;

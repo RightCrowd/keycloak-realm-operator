@@ -16,7 +16,7 @@ import {
   handleK8sResourceUpdate,
 } from "./reconciler.ts";
 
-const logger = new Logger('managed-realms crd handler')
+const logger = new Logger("managed-realms crd handler");
 
 async function onEvent(
   _phase: string,
