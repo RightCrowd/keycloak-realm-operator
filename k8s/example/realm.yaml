@@ -11,3 +11,4 @@ spec:
     loginWithEmailAllowed: false
     registrationEmailAsUsername: true
     emailTheme: keycloak
+    displayNameHtml: "<h6>Funny Realm</h6>"

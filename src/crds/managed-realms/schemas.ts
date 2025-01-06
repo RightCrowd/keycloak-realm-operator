@@ -12,7 +12,7 @@ export const zCrdSpec = z.object({
   ),
   // TODO: ideally we'd validate this, but that's a little much for now
   representation: z.any().describe(
-    "Realm representation following the PartialImportRealmRepresentation spec",
+    "Realm representation following the RealmRepresentation spec",
   ),
 });
 

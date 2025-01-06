@@ -87,18 +87,13 @@ export const reconcileResource = async (
     return;
   }
 
-  /*
-  TODO: By performing a partial import in every reconiliciation, we're very sure the state of the realm is always turned into the desired state. However, we still have to test and make sure this isn't too heavy on Keycloak!
-  */
   if (spec.representation != null) {
     await kcClient.ensureAuthed();
-    await kcClient.client.realms.partialImport({
-      realm,
-      rep: {
-        ...spec.representation,
-      }
-    }, {
-      catchNotFound: true
+    logger.log(`Performing update for realm ${realm}`);
+    kcClient.client.realms.update({ realm }, {
+      ...spec.representation,
+      realm: undefined,
+      id: undefined,
     });
   }
 
