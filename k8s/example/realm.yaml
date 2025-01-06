@@ -6,3 +6,8 @@ spec:
   realmId: funny
   displayName: Funny Haha
   pruneRealm: true
+  claimRealm: true
+  representation:
+    loginWithEmailAllowed: false
+    registrationEmailAsUsername: true
+    emailTheme: keycloak

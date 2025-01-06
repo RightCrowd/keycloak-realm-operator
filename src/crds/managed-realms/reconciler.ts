@@ -93,8 +93,12 @@ export const reconcileResource = async (
   if (spec.representation != null) {
     await kcClient.ensureAuthed();
     await kcClient.client.realms.partialImport({
-      realm: apiObj.spec.realmId,
-      rep: spec.representation,
+      realm,
+      rep: {
+        ...spec.representation,
+      }
+    }, {
+      catchNotFound: true
     });
   }
 
