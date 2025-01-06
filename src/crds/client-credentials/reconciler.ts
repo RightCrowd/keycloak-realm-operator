@@ -187,20 +187,18 @@ export const reconcileAllResources = async () => {
         CUSTOMRESOURCE_VERSION,
         ns,
         CUSTOMRESOURCE_PLURAL,
-      )).body as { items: CustomResourceOut[] }).items;
+      )).body as { items: CustomResourceIn[] }).items;
       const crsAndSelectors = crs.map((cr) => ({
         cr,
         selector: makeSelector(ns, cr.metadata.name),
       }));
 
-      await Promise.all(
-        crsAndSelectors.map((crDetails) =>
-          reconcileResource(
-            zCustomResourceIn.parse(crDetails.cr),
-            crDetails.selector,
-          )
-        ),
-      );
+      for (const crAndSelector of crsAndSelectors) {
+        await reconcileResource(
+          zCustomResourceIn.parse(crAndSelector.cr),
+          crAndSelector.selector,
+        )
+      }
     }
   }
 };

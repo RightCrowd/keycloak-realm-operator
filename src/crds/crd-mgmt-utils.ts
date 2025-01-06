@@ -49,18 +49,21 @@ export const getHashingSalt = async () => {
   return salt;
 };
 
-const generateCrHash = async (cr: CrDataType) => {
+export const generateDataHash = async (data: any) => {
   const salt = await getHashingSalt();
   const buf = await crypto.subtle.digest(
     "SHA-256",
     Buffer.from(JSON.stringify({
-      spec: cr.spec,
-      // Only the spec is relevant
-      // status: cr.status,
-      salt,
+      data, salt
     })),
   );
   return encodeHex(buf);
+}
+
+const generateCrHash = async (cr: CrDataType) => {
+  return await generateDataHash({
+    spec: cr.spec
+  })
 };
 
 const hashAnnotationKey =

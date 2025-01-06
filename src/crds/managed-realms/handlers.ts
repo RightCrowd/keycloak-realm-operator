@@ -11,7 +11,6 @@ import {
 } from "./schemas.ts";
 import process from "node:process";
 import { reconcileResource } from "./reconciler.ts";
-import { scheduleJobNow as scheduleSecretsCleanupJobNow } from "./secretsCleanupQueue.ts";
 import {
   updateCr as updateCrGeneric,
   validateCrHash,
@@ -36,12 +35,12 @@ async function onEvent(
       if (parsedApiObj.status?.state == null) {
         await updateCr(selector, { status: { state: "not-synced" } });
       }
-      await reconcileResource(parsedApiObj);
+      await reconcileResource(parsedApiObj, selector);
     }
   }
   if (phase === "DELETED") {
     logger.log("Scheduling managed-realms cleanup job now");
-    await scheduleSecretsCleanupJobNow();
+    // await scheduleSecretsCleanupJobNow();
   }
 }
 
