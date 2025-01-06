@@ -14,6 +14,7 @@ import { reconcileResource } from "./reconciler.ts";
 import {
   updateCr as updateCrGeneric,
   validateCrHash,
+  zBasicCr,
 } from "../crd-mgmt-utils.ts";
 
 const logger = new Logger("managed-realms crd handler");
@@ -31,11 +32,14 @@ async function onEvent(
   const selector = makeSelector(parsedApiObj.metadata.name);
 
   if (phase === "ADDED" || phase === "MODIFIED") {
-    if (!(await validateCrHash(parsedApiObj))) {
-      if (parsedApiObj.status?.state == null) {
-        await updateCr(selector, { status: { state: "not-synced" } });
-      }
+    // Set initial state
+    if (parsedApiObj.status?.state == null) {
+      await updateCr(selector, { status: { state: "not-synced" } });
+    }
+    if (!(await validateCrHash(zBasicCr.parse(apiObj)))) {
       await reconcileResource(parsedApiObj, selector);
+    } else {
+      logger.log("Ignoring own update");
     }
   }
   if (phase === "DELETED") {
