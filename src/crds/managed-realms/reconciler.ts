@@ -119,43 +119,29 @@ export const reconcileAllResources = async () => {
   }
 };
 
-// export const cleanup = async () => {
-//   const namespaces = (await k8sApiPods.listNamespace()).body.items;
-//   const secrets: V1Secret[] = [];
-//   const customResources: CustomResourceOut[] = [];
-//   for (const namespace of namespaces) {
-//     if (namespace.metadata?.name != null) {
-//       const ns = namespace.metadata.name;
-//       secrets.push(...(await k8sApiPods.listNamespacedSecret(ns)).body.items);
-//       customResources.push(
-//         ...((await k8sApiMC.listNamespacedCustomObject(
-//           CUSTOMRESOURCE_GROUP,
-//           CUSTOMRESOURCE_VERSION,
-//           ns,
-//           CUSTOMRESOURCE_PLURAL,
-//         )).body as { items: CustomResourceOut[] }).items,
-//       );
-//     }
-//   }
-//   const managedSecrets = secrets.filter((s) =>
-//     s.metadata?.annotations?.[sourceAnnotationKey] != null
-//   );
+export const cleanup = async () => {
+  await kcClient.ensureAuthed();
+  const realms = await kcClient.client.realms.find();
+  const crs = (await k8sApiMC.listClusterCustomObject(
+    CUSTOMRESOURCE_GROUP,
+    CUSTOMRESOURCE_VERSION,
+    CUSTOMRESOURCE_PLURAL,
+  )).body as {
+    items: CustomResourceIn[];
+  };
+  const crManagedRealmNames = crs.items.map((cr) => cr.spec.realmId);
 
-//   const lingeringManagedSecrets = managedSecrets.filter((s) => {
-//     if (s.metadata?.name == null || s.metadata?.namespace == null) {
-//       return true;
-//     }
-//     const matchExists = customResources.some((cr) =>
-//       cr.spec.targetSecretName === s.metadata!.name! &&
-//       cr.metadata.namespace === s.metadata!.namespace!
-//     );
-//     return !matchExists;
-//   });
+  const managedRealms = realms.filter(realmIsClaimed);
+  const lingeringRealms = managedRealms.filter((r) => {
+    if (r.realm == null) {
+      throw new Error(`Realm not defined`);
+    }
+    return !crManagedRealmNames.includes(r.realm!);
+  });
 
-//   for (const secret of lingeringManagedSecrets) {
-//     await k8sApiPods.deleteNamespacedSecret(
-//       secret.metadata!.name!,
-//       secret.metadata!.namespace!,
-//     );
-//   }
-// };
+  for (const realmRepresentation of lingeringRealms) {
+    await kcClient.ensureAuthed();
+    logger.log(`Deleting lingering managed realm ${realmRepresentation.realm}`);
+    await kcClient.client.realms.del({ realm: realmRepresentation.realm! });
+  }
+};

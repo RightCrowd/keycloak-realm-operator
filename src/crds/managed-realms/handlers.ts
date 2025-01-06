@@ -10,7 +10,7 @@ import {
   zCustomResourceOut,
 } from "./schemas.ts";
 import process from "node:process";
-import { reconcileResource } from "./reconciler.ts";
+import { cleanup, reconcileResource } from "./reconciler.ts";
 import {
   updateCr as updateCrGeneric,
   validateCrHash,
@@ -43,8 +43,8 @@ async function onEvent(
     }
   }
   if (phase === "DELETED") {
-    logger.log("Scheduling managed-realms cleanup job now");
-    // await scheduleSecretsCleanupJobNow();
+    logger.log("Running realm cleanup");
+    await cleanup();
   }
 }
 
