@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@std/assert@1": "1.0.8",
     "jsr:@std/crypto@*": "1.0.3",
+    "jsr:@std/encoding@*": "1.0.6",
     "jsr:@std/internal@^1.0.5": "1.0.5",
     "npm:@ctrl/golang-template@*": "1.4.1",
     "npm:@keycloak/keycloak-admin-client@*": "26.0.7",
@@ -12,7 +13,6 @@
     "npm:connection-string@*": "4.4.0",
     "npm:jwt-decode@*": "4.0.0",
     "npm:redis@*": "4.7.0_@redis+client@1.6.0",
-    "npm:redis@^4.7.0": "4.7.0_@redis+client@1.6.0",
     "npm:zod@*": "3.23.8"
   },
   "jsr": {
@@ -24,6 +24,9 @@
     },
     "@std/crypto@1.0.3": {
       "integrity": "a2a32f51ddef632d299e3879cd027c630dcd4d1d9a5285d6e6788072f4e51e7f"
+    },
+    "@std/encoding@1.0.6": {
+      "integrity": "ca87122c196e8831737d9547acf001766618e78cd8c33920776c7f5885546069"
     },
     "@std/internal@1.0.5": {
       "integrity": "54a546004f769c1ac9e025abd15a76b6671ddc9687e2313b67376125650dc7ba"
@@ -794,8 +797,7 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@1",
-      "npm:redis@^4.7.0"
+      "jsr:@std/assert@1"
     ]
   }
 }

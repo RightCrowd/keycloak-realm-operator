@@ -1,6 +1,11 @@
 import { Console } from "node:console";
 import process from "node:process";
 
+export type DeepPartial<T> = T extends object ? {
+    [P in keyof T]?: DeepPartial<T[P]>;
+  }
+  : T;
+
 type ConsoleInstance = InstanceType<typeof Console>;
 
 export class Logger extends Console {

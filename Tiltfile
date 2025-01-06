@@ -23,4 +23,4 @@ k8s_yaml(blob(str(yaml)))
 k8s_yaml('k8s/example/realm.yaml')
 k8s_yaml('k8s/example/client-credential.yaml')
 
-k8s_resource(workload='keycloak-realm-operator-deployment', port_forwards=12345)
+k8s_resource('keycloak-realm-operator-deployment', port_forwards=[12345])

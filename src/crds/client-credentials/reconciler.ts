@@ -4,6 +4,7 @@ import {
   CUSTOMRESOURCE_VERSION,
   type CustomResourceIn,
   type CustomResourceOut,
+  makeSelector,
   zCustomResourceIn,
 } from "./schemas.ts";
 import { k8sApiMC, k8sApiPods } from "../../k8s.ts";
@@ -11,6 +12,8 @@ import { V1Secret } from "npm:@kubernetes/client-node";
 import { type ClientRepresentation, KeycloakClient } from "../../keycloak.ts";
 import { Logger } from "../../util.ts";
 import { parse } from "npm:@ctrl/golang-template";
+import { type CrSelector } from "../crd-mgmt-utils.ts";
+import { updateCr } from "./handlers.ts";
 
 const logger = new Logger("client-credentials reconciler");
 
@@ -48,10 +51,15 @@ const generateEncodedSecretData =
     return encodedK8sSecretData;
   };
 
-export const reconcileResource = async (apiObj: CustomResourceIn) => {
+export const reconcileResource = async (
+  apiObj: CustomResourceIn,
+  selector: CrSelector,
+) => {
   logger.log(
-    `Reconciling CR of type ${CUSTOMRESOURCE_PLURAL}, name "${apiObj.metadata.name}" in namespace "${apiObj.metadata.namespace}"`,
+    `Reconciling CR`,
+    selector,
   );
+  await updateCr(selector, { status: { state: "syncing" } });
   let currentSecret: V1Secret | undefined;
   try {
     currentSecret = (await k8sApiPods.readNamespacedSecret(
@@ -86,6 +94,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
       logger.log(
         `Secret ${apiObj.spec.targetSecretName} in namespace ${apiObj.metadata.namespace} exists but is not owned by operator`,
       );
+      await updateCr(selector, { status: { state: "failed" } });
       return;
     }
 
@@ -96,6 +105,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
     const clientSecret = targettedKcClient?.secret;
 
     if (clientId == null || clientSecret == null) {
+      await updateCr(selector, { status: { state: "failed" } });
       if (apiObj.spec.fallbackStrategy === "skip") {
         logger.log(
           `Keycloak credentials not found for ${apiObj.metadata.name} in namespace ${apiObj.metadata.namespace}. FallbackStrategy is 'skip', so skipping.`,
@@ -127,6 +137,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
         ),
       },
     );
+    await updateCr(selector, { status: { state: "synced" } });
     return;
   }
 
@@ -135,6 +146,7 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
   const clientId = targettedKcClient?.clientId;
   const clientSecret = targettedKcClient?.secret;
   if (clientId == null || clientSecret == null) {
+    await updateCr(selector, { status: { state: "failed" } });
     if (apiObj.spec.fallbackStrategy === "skip") {
       logger.log(
         `Keycloak credentials not found for ${apiObj.metadata.name} in namespace ${apiObj.metadata.namespace}. FallbackStrategy is 'skip', so skipping.`,
@@ -162,27 +174,35 @@ export const reconcileResource = async (apiObj: CustomResourceIn) => {
       clientSecret,
     ),
   });
+  await updateCr(selector, { status: { state: "synced" } });
 };
 
 export const reconcileAllResources = async () => {
   const namespaces = (await k8sApiPods.listNamespace()).body.items;
-  const customResources: CustomResourceOut[] = [];
   for (const namespace of namespaces) {
     if (namespace.metadata?.name != null) {
       const ns = namespace.metadata.name;
-      customResources.push(
-        ...((await k8sApiMC.listNamespacedCustomObject(
-          CUSTOMRESOURCE_GROUP,
-          CUSTOMRESOURCE_VERSION,
-          ns,
-          CUSTOMRESOURCE_PLURAL,
-        )).body as { items: CustomResourceOut[] }).items,
+      const crs = ((await k8sApiMC.listNamespacedCustomObject(
+        CUSTOMRESOURCE_GROUP,
+        CUSTOMRESOURCE_VERSION,
+        ns,
+        CUSTOMRESOURCE_PLURAL,
+      )).body as { items: CustomResourceOut[] }).items;
+      const crsAndSelectors = crs.map((cr) => ({
+        cr,
+        selector: makeSelector(ns, cr.metadata.name),
+      }));
+
+      await Promise.all(
+        crsAndSelectors.map((crDetails) =>
+          reconcileResource(
+            zCustomResourceIn.parse(crDetails.cr),
+            crDetails.selector,
+          )
+        ),
       );
     }
   }
-  await Promise.all(
-    customResources.map((cr) => reconcileResource(zCustomResourceIn.parse(cr))),
-  );
 };
 
 export const cleanup = async () => {

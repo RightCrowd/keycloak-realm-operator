@@ -6,6 +6,7 @@ import { crypto } from "jsr:@std/crypto";
 import { Buffer } from "node:buffer";
 import { encodeHex } from "jsr:@std/encoding/hex";
 import { k8sApiMC } from "../k8s.ts";
+import { z } from "npm:zod";
 
 const logger = new Logger("crd-mgmt-utils");
 
@@ -14,11 +15,18 @@ type CrDataType = {
   status?: any;
 };
 
+export const zBasicCr = z.object({
+  metadata: z.record(z.string(), z.any()),
+  spec: z.record(z.string(), z.any()),
+  status: z.any().optional(),
+});
+
 type ActualCRType = CrDataType & {
   metadata: {
     annotations?: {
       [key: string]: string;
     };
+    [key: string]: unknown;
   };
 };
 
@@ -47,7 +55,8 @@ const generateCrHash = async (cr: CrDataType) => {
     "SHA-256",
     Buffer.from(JSON.stringify({
       spec: cr.spec,
-      status: cr.status,
+      // Only the spec is relevant
+      // status: cr.status,
       salt,
     })),
   );
@@ -55,7 +64,7 @@ const generateCrHash = async (cr: CrDataType) => {
 };
 
 const hashAnnotationKey =
-  "k8s.rightcrowd.com/keycloak-realm-operator/managed-hash";
+  "k8s.rightcrowd.com/keycloak-realm-operator_managedhash";
 export const generateCrAnnotations = async (cr: CrDataType) => {
   const hash = await generateCrHash(cr);
   return {
@@ -70,7 +79,7 @@ export const validateCrHash = async (cr: ActualCRType) => {
   return expectedHash === actualHash;
 };
 
-type CrSelector = {
+export type CrSelector = {
   group: string;
   version: string;
   plural: string;
@@ -82,6 +91,7 @@ type CrUpdates = {
   spec?: any;
   status?: any;
 };
+
 export const generateCrUpdatePatch = async (
   selector: CrSelector,
   updates: CrUpdates,
@@ -113,18 +123,18 @@ export const generateCrUpdatePatch = async (
       ...updates.status,
     },
     metadata: {
-      annotations: currentCr.metadata.annotations,
+      annotations: {
+        // ...currentCr.metadata.annotations,
+      },
     },
   };
 
   updatedCr.metadata.annotations = {
     ...updatedCr.metadata.annotations,
-    ...await generateCrAnnotations(updatedCr),
+    ...(await generateCrAnnotations(updatedCr)),
   };
 
   const crdUpdatedStatusPatch = {
-    apiVersion: `${selector.group}/${selector.version}`,
-    kind: selector.plural,
     metadata: {
       name: selector.name,
       annotations: updatedCr.metadata.annotations,
@@ -134,4 +144,91 @@ export const generateCrUpdatePatch = async (
   };
 
   return crdUpdatedStatusPatch;
+};
+
+export const updateCr = async <Schema extends CrUpdates = CrUpdates>(
+  selector: CrSelector,
+  updates: {
+    spec?: Partial<Schema["spec"]>;
+    status?: Partial<Schema["status"]>;
+  },
+) => {
+  const namespaced = selector.namespace != null;
+
+  const patch = await generateCrUpdatePatch(selector, updates);
+
+  // const shouldPatchStatus = updates.status != null
+  const shouldPatchStatus = true;
+
+  if (shouldPatchStatus) {
+    if (namespaced) {
+      await k8sApiMC.patchNamespacedCustomObjectStatus(
+        selector.group,
+        selector.version,
+        selector.namespace!,
+        selector.plural,
+        selector.name,
+        patch,
+        undefined,
+        undefined,
+        undefined,
+        {
+          headers: {
+            "Content-Type": "application/merge-patch+json",
+          },
+        },
+      );
+    } else {
+      await k8sApiMC.patchClusterCustomObjectStatus(
+        selector.group,
+        selector.version,
+        selector.plural,
+        selector.name,
+        patch,
+        undefined,
+        undefined,
+        undefined,
+        {
+          headers: {
+            "Content-Type": "application/merge-patch+json",
+          },
+        },
+      );
+    }
+  }
+
+  if (namespaced) {
+    await k8sApiMC.patchNamespacedCustomObject(
+      selector.group,
+      selector.version,
+      selector.namespace!,
+      selector.plural,
+      selector.name,
+      patch,
+      undefined,
+      undefined,
+      undefined,
+      {
+        headers: {
+          "Content-Type": "application/merge-patch+json",
+        },
+      },
+    );
+  } else {
+    await k8sApiMC.patchClusterCustomObject(
+      selector.group,
+      selector.version,
+      selector.plural,
+      selector.name,
+      patch,
+      undefined,
+      undefined,
+      undefined,
+      {
+        headers: {
+          "Content-Type": "application/merge-patch+json",
+        },
+      },
+    );
+  }
 };

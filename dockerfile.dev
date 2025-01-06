@@ -3,4 +3,5 @@ COPY ./deno.* /app/
 COPY ./src /app/src
 WORKDIR /app
 ENV DENO_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+EXPOSE 12345
 CMD deno task dev

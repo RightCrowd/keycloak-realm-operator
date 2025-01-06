@@ -1,31 +1,35 @@
 import z from "npm:zod";
+import { CrSelector } from "../crd-mgmt-utils.ts";
 
 export const zCrdSpec = z.object({
   realmId: z.string(),
   displayName: z.string().optional(),
-  pruneRealm: z.boolean().optional(),
-  clients: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    type: z.enum(["oidc"]),
-    clientAuthenticationEnabled: z.boolean().optional(),
-    secretTargets: z.array(z.object({
-      namespace: z.string(),
-      name: z.string(),
-      clientIdPropertyName: z.string().optional().default("clientId"),
-      clientSecretPropertyName: z.string().optional().default(
-        "clientSecret",
-      ),
-    })).optional(),
-  })).optional(),
+  pruneRealm: z.boolean().optional().default(false).describe(
+    "Wether or not to delete the realm in Keycloak when the CR is deleted",
+  ),
+  claimRealm: z.boolean().optional().default(false).describe(
+    "Wether or not to claim management of the realm if it were to already exist in Keycloak when the CR is created",
+  ),
 });
 
 export const zCrdStatusIn = z.object({
-  "latestOperatorStatusUpdate": z.coerce.date().optional(),
+  state: z.enum([
+    "not-synced",
+    "out-of-sync",
+    "syncing",
+    "synced",
+    "failed",
+  ]).optional(),
 }).optional();
 
 export const zCrdStatusOut = z.object({
-  "latestOperatorStatusUpdate": z.string().optional(),
+  state: z.enum([
+    "not-synced",
+    "out-of-sync",
+    "syncing",
+    "synced",
+    "failed",
+  ]).optional(),
 }).optional();
 
 export const zCustomResourceIn = z.object({
@@ -33,6 +37,7 @@ export const zCustomResourceIn = z.object({
   kind: z.string(),
   metadata: z.object({
     name: z.string(),
+    annotations: z.record(z.string(), z.string()).optional(),
   }).passthrough(),
   spec: zCrdSpec,
   status: zCrdStatusIn,
@@ -43,11 +48,22 @@ export const zCustomResourceOut = z.object({
   kind: z.string(),
   metadata: z.object({
     name: z.string(),
+    annotations: z.record(z.string(), z.string()).optional(),
   }).passthrough(),
   spec: zCrdSpec,
   status: zCrdStatusOut,
 });
 
+export type CustomResourceOut = z.output<typeof zCustomResourceOut>;
+export type CustomResourceIn = z.output<typeof zCustomResourceIn>;
+
 export const CUSTOMRESOURCE_GROUP = "k8s.rightcrowd.com";
 export const CUSTOMRESOURCE_VERSION = "v1alpha1";
 export const CUSTOMRESOURCE_PLURAL = "managedkeycloakrealms";
+
+export const makeSelector = (name: string): CrSelector => ({
+  group: CUSTOMRESOURCE_GROUP,
+  plural: CUSTOMRESOURCE_PLURAL,
+  version: CUSTOMRESOURCE_VERSION,
+  name,
+});
