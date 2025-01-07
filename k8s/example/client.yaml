@@ -1,0 +1,12 @@
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: KeycloakClient
+metadata:
+  name: funny-client
+spec:
+  realmId: funny
+  clientId: funny-client
+  name: Funny Client
+  pruneClient: true
+  claimClient: true
+  representation:
+    implicitFlowEnabled: true

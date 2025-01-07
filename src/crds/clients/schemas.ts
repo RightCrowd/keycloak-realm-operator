@@ -3,16 +3,28 @@ import { CrSelector } from "../crd-mgmt-utils.ts";
 
 export const zCrdSpec = z.object({
   realmId: z.string(),
-  displayName: z.string().optional(),
-  pruneRealm: z.boolean().optional().default(false).describe(
-    "Wether or not to delete the realm in Keycloak when the CR is deleted",
+  clientId: z.string(),
+  name: z.string().optional(),
+  secret: z.object({
+    value: z.string(),
+  }).or(z.object({
+    valueFrom: z.object({
+      secretKeyRef: z.object({
+        namespace: z.string(),
+        name: z.string(),
+        key: z.string(),
+      }),
+    }),
+  })).optional(),
+  pruneClient: z.boolean().optional().default(false).describe(
+    "Wether or not to delete the client in Keycloak when the CR is deleted",
   ),
-  claimRealm: z.boolean().optional().default(false).describe(
-    "Wether or not to claim management of the realm if it were to already exist in Keycloak when the CR is created",
+  claimClient: z.boolean().optional().default(false).describe(
+    "Wether or not to claim management of the client if it were to already exist in Keycloak when the CR is created",
   ),
   // TODO: ideally we'd validate this, but that's a little much for now
   representation: z.any().describe(
-    "Realm representation following the RealmRepresentation spec",
+    "Client representation following the ClientRepresentation spec",
   ),
 });
 
@@ -63,7 +75,7 @@ export type CustomResourceIn = z.output<typeof zCustomResourceIn>;
 
 export const CUSTOMRESOURCE_GROUP = "k8s.rightcrowd.com";
 export const CUSTOMRESOURCE_VERSION = "v1alpha1";
-export const CUSTOMRESOURCE_PLURAL = "managedkeycloakrealms";
+export const CUSTOMRESOURCE_PLURAL = "keycloakclients";
 
 export const makeSelector = (name: string): CrSelector => ({
   group: CUSTOMRESOURCE_GROUP,
