@@ -1,16 +1,31 @@
 import z from "npm:zod";
-import { k8sApiMC, watcher } from "../../k8s.ts";
-import { log } from "../../util.ts";
+import { watcher } from "../../k8s.ts";
+import { Logger } from "../../util.ts";
 import {
   CUSTOMRESOURCE_GROUP,
   CUSTOMRESOURCE_PLURAL,
   CUSTOMRESOURCE_VERSION,
-  zCrdStatusOut,
+  makeSelector,
   zCustomResourceIn,
+  zCustomResourceOut,
 } from "./schemas.ts";
 import process from "node:process";
 import { reconcileResource } from "./reconciler.ts";
 import { scheduleJobNow as scheduleSecretsCleanupJobNow } from "./secretsCleanupQueue.ts";
+import {
+  updateCr as updateCrGeneric,
+  validateCrHash,
+  zBasicCr,
+} from "../crd-mgmt-utils.ts";
+
+const logger = new Logger("client-credentials crd handler");
+
+// Zod parse to make sure defaults are applied
+export const updateCr: typeof updateCrGeneric<
+  z.input<typeof zCustomResourceOut>
+> = (selector, updates) => {
+  return updateCrGeneric(selector, updates);
+};
 
 async function onEvent(
   _phase: string,
@@ -18,60 +33,27 @@ async function onEvent(
 ) {
   const phase = _phase as "ADDED" | "MODIFIED" | "DELETED";
   const parsedApiObj = zCustomResourceIn.parse(apiObj);
-  log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
+  logger.log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
+
+  const selector = makeSelector(
+    parsedApiObj.metadata.namespace,
+    parsedApiObj.metadata.name,
+  );
 
   if (phase === "ADDED" || phase === "MODIFIED") {
-    await reconcileResource(parsedApiObj);
+    // Set initial state
+    if (parsedApiObj.status?.state == null) {
+      await updateCr(selector, { status: { state: "not-synced" } });
+    }
+    if (!(await validateCrHash(zBasicCr.parse(apiObj)))) {
+      await reconcileResource(parsedApiObj, selector);
+    } else {
+      logger.log("Ignoring own update");
+    }
   }
   if (phase === "DELETED") {
-    log("Scheduling secrets cleanup job now");
+    logger.log("Scheduling secrets cleanup job now");
     await scheduleSecretsCleanupJobNow();
-  }
-}
-
-export async function updateStatus(
-  k8sResourceName: string,
-  status: z.input<typeof zCrdStatusOut>,
-) {
-  const resourceFetch = await k8sApiMC.getClusterCustomObject(
-    CUSTOMRESOURCE_GROUP,
-    CUSTOMRESOURCE_VERSION,
-    CUSTOMRESOURCE_PLURAL,
-    k8sResourceName,
-  );
-  const currentObj = zCustomResourceIn.parse(resourceFetch.body);
-
-  const crdUpdatedStatusPatch = {
-    apiVersion: currentObj.apiVersion,
-    kind: currentObj.kind,
-    metadata: {
-      name: currentObj.metadata.name,
-    },
-    status: zCrdStatusOut.parse({
-      latestOperatorStatusUpdate: new Date().toISOString(),
-      ...status,
-    }),
-  };
-
-  try {
-    await k8sApiMC.patchClusterCustomObject(
-      CUSTOMRESOURCE_GROUP,
-      CUSTOMRESOURCE_VERSION,
-      CUSTOMRESOURCE_PLURAL,
-      k8sResourceName,
-      crdUpdatedStatusPatch,
-      undefined,
-      undefined,
-      undefined,
-      {
-        headers: {
-          "Content-Type": "application/merge-patch+json",
-        },
-      },
-    );
-  } catch (error) {
-    log("Failed to update cr status");
-    throw error;
   }
 }
 
@@ -82,7 +64,7 @@ export async function startWatching() {
     {},
     onEvent,
     (err) => {
-      log(`Connection closed. ${err}`);
+      logger.log(`Connection closed. ${err}`);
       process.exit(1);
     },
   );
@@ -93,11 +75,11 @@ export async function startWatching() {
   //     {},
   //     (phase: string, apiObj: any) => {
   //         if (phase === 'DELETED' || phase === 'MODIFIED') {
-  //             console.log(apiObj)
+  //             console.logger.log(apiObj)
   //         }
   //     },
   //     (err) => {
-  //         log(`Connection closed. ${err}`);
+  //         logger.log(`Connection closed. ${err}`);
   //         process.exit(1);
   //     },
   // );

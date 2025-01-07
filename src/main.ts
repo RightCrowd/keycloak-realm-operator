@@ -1,22 +1,24 @@
 import { validateConfig } from "./config.ts";
 import "./k8s.ts";
 import { startAllQueues, startAllWatchers } from "./crds/startWatchers.ts";
-import { log } from "./util.ts";
+import { Logger } from "./util.ts";
+
+const logger = new Logger("main");
 
 async function start() {
-  log("Validating configuration...");
+  logger.log("Validating configuration...");
   await validateConfig();
 
-  // log('Initializing reconciler...');
+  // logger.log('Initializing reconciler...');
   // await initReconciler()
 
-  log("Starting k8s watchers...");
+  logger.log("Starting k8s watchers...");
   await startAllWatchers();
 
-  log("Starting queues...");
+  logger.log("Starting queues...");
   await startAllQueues();
 
-  // log('Starting reconciler loop...');
+  // logger.log('Starting reconciler loop...');
   // await startReconciler()
 }
 

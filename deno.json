@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --inspect=0.0.0.0:12345 --allow-read --allow-net --allow-env --watch ./src/main.ts",
+    "dev": "deno run --inspect=0.0.0.0:12345 --allow-all --watch ./src/main.ts",
     "build": "deno compile -o dist/main --allow-read --allow-net --allow-env ./src/main.ts",
     "style:test": "deno fmt --check src/**/* && deno lint src/**/*",
     "style:fix": "deno fmt src/**/* && deno lint --fix src/**/*"

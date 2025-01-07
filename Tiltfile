@@ -6,23 +6,21 @@ dotenv()
 
 allow_k8s_contexts(os.getenv('TILT_K8S_CONTEXT'))
 
-default_registry('registry.%s' % os.getenv('TILT_INGRESS_HOSTNAME'))
+default_registry('ttl.sh')
 
 docker_build('keycloak-realm-operator',
              context='.',
              dockerfile='./dockerfile.dev',
-             build_args={'GITLAB_API_ACCESS_TOKEN': os.getenv('GITLAB_API_ACCESS_TOKEN')},
-
              live_update=[
                 sync('./src', '/app/src'),
              ]
 )
 
 yaml = helm('k8s/helm', values=['localdev-helm-values.yaml'])
-k8s_yaml(blob(str(yaml).replace('__HOSTNAME__', str(os.getenv('TILT_INGRESS_HOSTNAME')))))
+k8s_yaml(blob(str(yaml)))
 
 # Example ⬇️
 k8s_yaml('k8s/example/realm.yaml')
 k8s_yaml('k8s/example/client-credential.yaml')
 
-k8s_resource(workload='keycloak-realm-operator-deployment', port_forwards=12345)
+k8s_resource('keycloak-realm-operator-deployment', port_forwards=[12345])

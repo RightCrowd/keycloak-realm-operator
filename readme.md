@@ -103,13 +103,44 @@ data:
   connectionString: aHR0cHM6Ly9jYWtlLXNob3AtYXBpLWNsaWVudDpTZWVtcyBsaWtlIHlvdSdyZSB3b3JraW5nIG9uIHNvbWUgY29vbCBzdHVmZiDwn5GAIENoZWNrIG91dCBvdXIgY2FyZWVycyBwYWdlISBodHRwczovL3d3dy5yaWdodGNyb3dkLmNvbS9jYXJlZXJzQGNha2Utc2hvcC1hcGk=
 ```
 
+## Realm
+The operator can be used to create and manage Keycloak realms.
+To accomplish this, the `ManagedKeycloakRealm` custom resource is used.
+
+### Fields
+#### realmId (required)
+The ID of the realm
+
+#### displayName (optional)
+The display name of the realm
+
+#### pruneRealm (optional)
+Wether or not to delete the realm from Keycloak when the corresponding CR is deleted
+
+#### claimRealm (optional)
+Wether or not to take management of the realm if it were to already exist while not created by the operator
+
+#### representation (optional)
+An object matching the [RealmRepresentation](https://www.keycloak.org/docs-api/22.0.5/javadocs/org/keycloak/representations/idm/RealmRepresentation.html) class, dictating the configuration of the realm
+
+### Example
+
+```yaml
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: ManagedKeycloakRealm
+metadata:
+  name: funny-realm
+spec:
+  realmId: funny
+  displayName: Funny Haha
+  pruneRealm: true
+  claimRealm: true
+  representation:
+    loginWithEmailAllowed: false
+    registrationEmailAsUsername: true
+    emailTheme: keycloak
+    displayNameHtml: "<h5>Funny Realm</h5>"
+```
+
 # Local Development
-- Make sure [Tilt](https://tilt.dev/) is installed on your machine
-- Run the [RightCrowd localdev cluster](https://gitlab.com/rightcrowd/platform-infra/-/tree/main/clusters?ref_type=heads)
-    > Note: The RightCrowd localdev cluster is an internal development tool which is not public.
-    > That being said, all you essentially need for the operator to work locally is a running Kubernetes cluster with (network accessible) Keycloak in it.
-- Prepare the repo by running `./scripts/init.sh`
-  > The deployment manifests (the helm chart) are housed in our [helm charts](https://github.com/RightCrowd/helm-charts/tree/main/charts/keycloak-realm-operator) repository. The init script downloads these to the `./k8s/helm` directory, from which Tilt deploys them. This allows fiddling on the manifests in a live environment locally.
-- Adjust the `.env` file and `localdev-helm-values.yaml` file in the root of the project as desired
-- `export KUBECONFIG=<path of your kubeconfig>`
-- `tilt up`
+See [Local Development](./local-development.md)
