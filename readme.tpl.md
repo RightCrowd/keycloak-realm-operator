@@ -58,20 +58,7 @@ An object matching the [RealmRepresentation](https://www.keycloak.org/docs-api/2
 ### Example
 
 ```yaml
-apiVersion: k8s.rightcrowd.com/v1alpha1
-kind: KeycloakRealm
-metadata:
-  name: funny-realm
-spec:
-  realmId: funny
-  displayName: Funny Haha
-  pruneRealm: true
-  claimRealm: true
-  representation:
-    loginWithEmailAllowed: false
-    registrationEmailAsUsername: true
-    emailTheme: keycloak
-    displayNameHtml: "<h5>Funny Realm</h5>"
+# ./k8s/example/realm.yaml
 ```
 
 ## Client
@@ -119,18 +106,7 @@ An object matching the [ClientRepresentation](https://www.keycloak.org/docs-api/
 ### Example
 
 ```yaml
-apiVersion: k8s.rightcrowd.com/v1alpha1
-kind: KeycloakClient
-metadata:
-  name: funny-client
-spec:
-  realmId: funny
-  clientId: funny-client
-  name: Funny Client
-  pruneClient: true
-  claimClient: true
-  representation:
-    implicitFlowEnabled: true
+# ./k8s/example/client.yaml
 ```
 
 ## Client credential sync
@@ -164,25 +140,7 @@ The example below syncs the credentials for Keycloak client `that-one-client` in
 The `KeycloakClientCredential` is to be deployed in the namespace where the related secret should be created.
 
 ```yaml
-apiVersion: k8s.rightcrowd.com/v1alpha1
-kind: KeycloakClientCredential
-metadata:
-  name: supersecret-keycloak-client-sync
-spec:
-  realm: funny
-  clientId: funny-client
-  targetSecretName: supersecret-keycloak-client-secret
-  ## ⬇️ Optional
-  fallbackStrategy: skip # Default is "skip". Can be set to "error" to fail the reconciliation if the client is not found in Keycloak.
-  targetSecretTemplate:
-    - key: realm
-      template: {{ .realm }}
-    - key: clientId
-      template: {{ .clientId }}
-    - key: clientSecret
-      template: {{ .clientSecret }}
-    - key: connectionString
-      template: "https://{{ .clientId }}:{{ .clientSecret }}@funny-shop-api"
+# ./k8s/example/client-credential.yaml
 ```
 
 Based on this definition, the operator will fetch the credentials from Keycloak and create a  Kubernetes secret looking as follows:
