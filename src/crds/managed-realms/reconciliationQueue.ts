@@ -1,21 +1,22 @@
 import { Queue, Worker } from "npm:bullmq";
-import { cleanup } from "./reconciler.ts";
+import { reconcileAllResources } from "./reconciler.ts";
 import { Logger } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
+import { CUSTOMRESOURCE_PLURAL } from "./schemas.ts";
 
-const logger = new Logger("client-credentials:secretsCleanupQueue");
+const logger = new Logger("managed-realms:reconciliationQueue");
 
-const jobName = "secretCleanup";
+const jobName = `${CUSTOMRESOURCE_PLURAL}-reconciliation`;
 // const jobId = `${jobName}-job`;
 const jobQueueName = `${jobName}-queue`;
 
-type SecretCleanupReconcilerJobData = unknown;
-type SecretCleanupJobNameType = typeof jobName;
+type ReconcilerJobData = unknown;
+type JobNameType = typeof jobName;
 
 export const queue = new Queue<
-  SecretCleanupReconcilerJobData,
+  ReconcilerJobData,
   unknown,
-  SecretCleanupJobNameType
+  JobNameType
 >(jobQueueName, {
   connection: {
     host,
@@ -26,16 +27,18 @@ export const queue = new Queue<
 });
 
 export const worker = new Worker<
-  SecretCleanupReconcilerJobData,
+  ReconcilerJobData,
   unknown,
-  SecretCleanupJobNameType
+  JobNameType
 >(
   jobQueueName,
   async (_job) => {
     try {
-      logger.log("Performing scheduled secrets cleanup");
-      await cleanup();
-      logger.log("Finished scheduled secrets cleanup");
+      logger.log(
+        `Performing scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`,
+      );
+      await reconcileAllResources();
+      logger.log(`Finished scheduled ${CUSTOMRESOURCE_PLURAL} reconciliation`);
     } catch (error) {
       console.error(error);
       throw error;
@@ -56,7 +59,7 @@ export const worker = new Worker<
 export const scheduleJobs = async () => {
   await queue.upsertJobScheduler(
     jobName,
-    { pattern: "*/5 * * * *" },
+    { pattern: "* * * * *" },
     {
       name: jobName,
       data: {},

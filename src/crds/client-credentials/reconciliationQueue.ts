@@ -4,19 +4,19 @@ import { Logger } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
 import { CUSTOMRESOURCE_PLURAL } from "./schemas.ts";
 
-const logger = new Logger("reconciliationQueue");
+const logger = new Logger("client-credentials:reconciliationQueue");
 
 const jobName = `${CUSTOMRESOURCE_PLURAL}-reconciliation`;
 // const jobId = `${jobName}-job`;
 const jobQueueName = `${jobName}-queue`;
 
-type SecretCleanupReconcilerJobData = unknown;
-type SecretCleanupJobNameType = typeof jobName;
+type ReconcilerJobData = unknown;
+type JobNameType = typeof jobName;
 
 export const queue = new Queue<
-  SecretCleanupReconcilerJobData,
+  ReconcilerJobData,
   unknown,
-  SecretCleanupJobNameType
+  JobNameType
 >(jobQueueName, {
   connection: {
     host,
@@ -27,9 +27,9 @@ export const queue = new Queue<
 });
 
 export const worker = new Worker<
-  SecretCleanupReconcilerJobData,
+  ReconcilerJobData,
   unknown,
-  SecretCleanupJobNameType
+  JobNameType
 >(
   jobQueueName,
   async (_job) => {
