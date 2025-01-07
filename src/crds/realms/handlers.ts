@@ -9,22 +9,16 @@ import {
   zCustomResourceIn,
   zCustomResourceOut,
 } from "./schemas.ts";
-import { reconcileResource } from "./reconciler.ts";
-import { scheduleJobNow as scheduleSecretsCleanupJobNow } from "./secretsCleanupQueue.ts";
+import { cleanup, reconcileResource } from "./reconciler.ts";
 import {
   updateCr as updateCrGeneric,
   validateCrHash,
   zBasicCr,
 } from "../crd-mgmt-utils.ts";
 
-const logger = new Logger("client-credentials crd handler");
+const logger = new Logger("managed-realms crd handler");
 
-// Zod parse to make sure defaults are applied
-export const updateCr: typeof updateCrGeneric<
-  z.input<typeof zCustomResourceOut>
-> = (selector, updates) => {
-  return updateCrGeneric(selector, updates);
-};
+export const updateCr = updateCrGeneric<z.input<typeof zCustomResourceOut>>;
 
 async function onEvent(
   _phase: string,
@@ -34,7 +28,7 @@ async function onEvent(
   const parsedApiObj = zCustomResourceIn.parse(apiObj);
   logger.log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
 
-  const selector = makeSelector(parsedApiObj.metadata.namespace, parsedApiObj.metadata.name);
+  const selector = makeSelector(parsedApiObj.metadata.name);
 
   // Set initial state
   if (parsedApiObj.status?.state == null) {
@@ -54,8 +48,8 @@ async function onEvent(
   }
 
   if (phase === "DELETED") {
-    logger.log("Scheduling secrets cleanup job now");
-    await scheduleSecretsCleanupJobNow();
+    logger.log("Running cleanup");
+    await cleanup();
   }
 }
 
@@ -71,19 +65,4 @@ export async function startWatching() {
       await startWatching()
     },
   );
-
-  /* Watch managed secrets in order to act immediatly if one gets deteled or modified */
-  // await watcher.watch(
-  //     `/apis/v1/secrets`,
-  //     {},
-  //     (phase: string, apiObj: any) => {
-  //         if (phase === 'DELETED' || phase === 'MODIFIED') {
-  //             console.logger.log(apiObj)
-  //         }
-  //     },
-  //     (err) => {
-  //         logger.log(`Connection closed. ${err}`);
-  //         process.exit(1);
-  //     },
-  // );
 }

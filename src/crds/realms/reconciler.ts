@@ -25,7 +25,7 @@ const claimAttributes = {
 const crSpecRealmAttribute =
   "k8s.rightcrowd.com/keycloak-realm-operator/cr-spec-serialized";
 
-const realmIsClaimed = (
+const isClaimed = (
   realm: { attributes?: RealmRepresentation["attributes"] },
 ) => {
   const attributes = realm.attributes ?? {};
@@ -72,7 +72,7 @@ export const reconcileResource = async (
     }))!;
   }
 
-  let realmClaimed = realmIsClaimed(currentKcRealm);
+  let realmClaimed = isClaimed(currentKcRealm);
   if (!realmClaimed) {
     logger.log(`Realm ${realm} is unclaimed`);
     if (spec.claimRealm) {
@@ -139,7 +139,7 @@ export const cleanup = async () => {
   };
   const crManagedRealmNames = crs.items.map((cr) => cr.spec.realmId);
 
-  const managedRealms = realms.filter(realmIsClaimed);
+  const managedRealms = realms.filter(isClaimed);
   const lingeringRealms = managedRealms.filter((r) => {
     if (r.realm == null) {
       throw new Error(`Realm not defined`);

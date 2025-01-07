@@ -1,5 +1,5 @@
 apiVersion: k8s.rightcrowd.com/v1alpha1
-kind: ManagedKeycloakRealm
+kind: KeycloakRealm
 metadata:
   name: funny-realm
 spec:

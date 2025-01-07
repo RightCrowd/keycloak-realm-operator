@@ -105,7 +105,7 @@ data:
 
 ## Realm
 The operator can be used to create and manage Keycloak realms.
-To accomplish this, the `ManagedKeycloakRealm` custom resource is used.
+To accomplish this, the `KeycloakRealm` custom resource is used.
 
 ### Fields
 #### realmId (required)
@@ -127,7 +127,7 @@ An object matching the [RealmRepresentation](https://www.keycloak.org/docs-api/2
 
 ```yaml
 apiVersion: k8s.rightcrowd.com/v1alpha1
-kind: ManagedKeycloakRealm
+kind: KeycloakRealm
 metadata:
   name: funny-realm
 spec:

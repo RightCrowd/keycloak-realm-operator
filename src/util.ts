@@ -14,28 +14,29 @@ export class Logger extends Console {
   }
 
   // deno-lint-ignore no-explicit-any
-  private format(message: string, extraData?: any) {
+  private format(message: string, extraData: any, level: string) {
     return JSON.stringify({
       scope: this.scope,
       timestamp: new Date().toISOString(),
       message,
+      level,
       ...extraData,
     });
   }
 
   override log(message: string, extraData?: unknown) {
-    super.log(this.format(message, extraData));
+    super.log(this.format(message, extraData, 'debug'));
   }
 
   override info(message: string, extraData?: unknown) {
-    super.error(this.format(message, extraData));
+    super.error(this.format(message, extraData, 'info'));
   }
 
   override error(message: string, extraData?: unknown) {
-    super.error(this.format(message, extraData));
+    super.error(this.format(message, extraData, 'error'));
   }
 
   override warn(message: string, extraData?: unknown) {
-    super.warn(this.format(message, extraData));
+    super.warn(this.format(message, extraData, 'warn'));
   }
 }

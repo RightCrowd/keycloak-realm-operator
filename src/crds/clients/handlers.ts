@@ -9,7 +9,6 @@ import {
   zCustomResourceIn,
   zCustomResourceOut,
 } from "./schemas.ts";
-import process from "node:process";
 import { cleanup, reconcileResource } from "./reconciler.ts";
 import {
   updateCr as updateCrGeneric,
@@ -31,19 +30,25 @@ async function onEvent(
 
   const selector = makeSelector(parsedApiObj.metadata.name);
 
-  if (phase === "ADDED" || phase === "MODIFIED") {
-    // Set initial state
-    if (parsedApiObj.status?.state == null) {
-      await updateCr(selector, { status: { state: "not-synced" } });
-    }
-    if (!(await validateCrHash(zBasicCr.parse(apiObj)))) {
+  // Set initial state
+  if (parsedApiObj.status?.state == null) {
+    await updateCr(selector, { status: { state: "not-synced" } });
+  }
+
+  if ((phase === "ADDED" || phase === "MODIFIED") && !(await validateCrHash(zBasicCr.parse(apiObj)))) {
+    try {
       await reconcileResource(parsedApiObj, selector);
-    } else {
-      logger.log("Ignoring own update");
+    } catch (error) {
+      logger.error("Error reconciling resource", {
+        selector,
+        error
+      })
+      await updateCr(selector, { status: { state: "failed" } });
     }
   }
+
   if (phase === "DELETED") {
-    logger.log("Running realm cleanup");
+    logger.log("Running cleanup");
     await cleanup();
   }
 }
@@ -54,9 +59,10 @@ export async function startWatching() {
     `/apis/${CUSTOMRESOURCE_GROUP}/${CUSTOMRESOURCE_VERSION}/${CUSTOMRESOURCE_PLURAL}`,
     {},
     onEvent,
-    (err) => {
-      logger.log(`Connection closed. ${err}`);
-      process.exit(1);
+    async (err) => {
+      logger.log('Connection closed', err);
+      logger.info('Restarting watcher');
+      await startWatching()
     },
   );
 }
