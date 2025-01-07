@@ -103,5 +103,44 @@ data:
   connectionString: aHR0cHM6Ly9jYWtlLXNob3AtYXBpLWNsaWVudDpTZWVtcyBsaWtlIHlvdSdyZSB3b3JraW5nIG9uIHNvbWUgY29vbCBzdHVmZiDwn5GAIENoZWNrIG91dCBvdXIgY2FyZWVycyBwYWdlISBodHRwczovL3d3dy5yaWdodGNyb3dkLmNvbS9jYXJlZXJzQGNha2Utc2hvcC1hcGk=
 ```
 
+## Realm
+The operator can be used to create and manage Keycloak realms.
+To accomplish this, the `ManagedKeycloakRealm` custom resource is used.
+
+### Fields
+#### realmId (required)
+The ID of the realm
+
+#### displayName (optional)
+The display name of the realm
+
+#### pruneRealm (optional)
+Wether or not to delete the realm from Keycloak when the corresponding CR is deleted
+
+#### claimRealm (optional)
+Wether or not to take management of the realm if it were to already exist while not created by the operator
+
+#### representation (optional)
+An object matching the [RealmRepresentation](https://www.keycloak.org/docs-api/22.0.5/javadocs/org/keycloak/representations/idm/RealmRepresentation.html) class, dictating the configuration of the realm
+
+### Example
+
+```yaml
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: ManagedKeycloakRealm
+metadata:
+  name: funny-realm
+spec:
+  realmId: funny
+  displayName: Funny Haha
+  pruneRealm: true
+  claimRealm: true
+  representation:
+    loginWithEmailAllowed: false
+    registrationEmailAsUsername: true
+    emailTheme: keycloak
+    displayNameHtml: "<h5>Funny Realm</h5>"
+```
+
 # Local Development
 See [Local Development](./local-development.md)

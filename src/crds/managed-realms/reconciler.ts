@@ -4,6 +4,7 @@ import {
   CUSTOMRESOURCE_VERSION,
   type CustomResourceIn,
   makeSelector,
+  zCrdSpec,
   zCustomResourceIn,
 } from "./schemas.ts";
 import { k8sApiMC } from "../../k8s.ts";
@@ -20,6 +21,9 @@ const kcClient = new KeycloakClient();
 const claimAttributes = {
   "k8s.rightcrowd.com/keycloak-realm-operator/claim": "true",
 } satisfies Record<string, string>;
+
+const crSpecRealmAttribute =
+  "k8s.rightcrowd.com/keycloak-realm-operator/cr-spec-serialized";
 
 const realmIsClaimed = (
   realm: { attributes?: RealmRepresentation["attributes"] },
@@ -56,7 +60,10 @@ export const reconcileResource = async (
     await kcClient.ensureAuthed();
     await kcClient.client.realms.create({
       realm,
-      attributes: claimAttributes,
+      attributes: {
+        ...claimAttributes,
+        [crSpecRealmAttribute]: JSON.stringify(spec),
+      },
       displayName,
     });
     await kcClient.ensureAuthed();
@@ -75,6 +82,7 @@ export const reconcileResource = async (
         attributes: {
           ...currentKcRealm.attributes,
           ...claimAttributes,
+          [crSpecRealmAttribute]: JSON.stringify(spec),
         },
       });
       realmClaimed = true;
@@ -140,6 +148,22 @@ export const cleanup = async () => {
   });
 
   for (const realmRepresentation of lingeringRealms) {
+    // Get the old spec from the realm attributes
+    const specAttributeValue = realmRepresentation.attributes
+      ?.[crSpecRealmAttribute];
+    let oldSpec: CustomResourceIn["spec"];
+    try {
+      oldSpec = zCrdSpec.parse(JSON.parse(specAttributeValue));
+    } catch (error) {
+      logger.error(
+        `Could not parse old spec from attribute ${crSpecRealmAttribute}`,
+        error,
+      );
+      continue;
+    }
+    if (!oldSpec.pruneRealm) {
+      continue;
+    }
     await kcClient.ensureAuthed();
     logger.log(`Deleting lingering managed realm ${realmRepresentation.realm}`);
     await kcClient.client.realms.del({ realm: realmRepresentation.realm! });
