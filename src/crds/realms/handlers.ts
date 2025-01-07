@@ -26,9 +26,12 @@ async function onEvent(
 ) {
   const phase = _phase as "ADDED" | "MODIFIED" | "DELETED";
   const parsedApiObj = zCustomResourceIn.parse(apiObj);
-  logger.log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
 
   const selector = makeSelector(parsedApiObj.metadata.name);
+  logger.log(
+    `Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`,
+    selector,
+  );
 
   // Set initial state
   if (parsedApiObj.status?.state == null) {
