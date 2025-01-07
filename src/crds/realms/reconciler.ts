@@ -164,8 +164,8 @@ export const cleanup = async () => {
     if (!oldSpec.pruneRealm) {
       continue;
     }
-    await kcClient.ensureAuthed();
     logger.log(`Deleting lingering managed realm ${realmRepresentation.realm}`);
+    await kcClient.ensureAuthed();
     await kcClient.client.realms.del({ realm: realmRepresentation.realm! });
   }
 };

@@ -13,6 +13,7 @@ import { Logger } from "../../util.ts";
 import { type CrSelector } from "../crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
 import type { ClientRepresentation } from "../../keycloak.ts";
+import { k8sApiPods } from "../../k8s.ts";
 
 const logger = new Logger("managed-client reconciler");
 
@@ -54,13 +55,13 @@ export const reconcileResource = async (
   if ((await kcClient.client.realms.findOne({ realm })) == null) {
     logger.error(`Realm not found ${realm}`);
     await updateCr(selector, { status: { state: "failed" } });
-    return
+    return;
   }
 
   await kcClient.ensureAuthed();
   let currentKcClient = await kcClient.client.clients.findOne({
     realm,
-    id
+    id,
   });
 
   if (currentKcClient == null) {
@@ -80,7 +81,7 @@ export const reconcileResource = async (
     await kcClient.ensureAuthed();
     currentKcClient = (await kcClient.client.clients.findOne({
       realm,
-      id
+      id,
     }))!;
   }
 
@@ -102,9 +103,26 @@ export const reconcileResource = async (
   }
 
   if (!claimed) {
-    logger.error(`Client ${id} in realm ${realm} is not claimed and claiming is disabled`);
+    logger.error(
+      `Client ${id} in realm ${realm} is not claimed and claiming is disabled`,
+    );
     await updateCr(selector, { status: { state: "failed" } });
     return;
+  }
+
+  let secret: string | undefined;
+  if (spec.secret != null) {
+    if ("value" in spec.secret) {
+      secret = spec.secret.value;
+    } else {
+      const { namespace, name, key } = spec.secret.valueFrom.secretKeyRef;
+      const k8sSecretData =
+        (await k8sApiPods.readNamespacedSecret(name, namespace)).body;
+      const encodedSecretValue = k8sSecretData.data?.[key];
+      if (encodedSecretValue != null) {
+        secret = atob(encodedSecretValue);
+      }
+    }
   }
 
   if (spec.representation != null) {
@@ -112,8 +130,9 @@ export const reconcileResource = async (
     logger.log(`Performing update for client ${id} in realm ${realm}`);
     kcClient.client.clients.update({ realm, id }, {
       ...spec.representation,
+      secret,
       id: undefined,
-      clientId: undefined
+      clientId: undefined,
     });
   }
 
@@ -149,9 +168,9 @@ export const cleanup = async () => {
     return {
       ...c,
       clientId: c.clientId,
-      realm: c.baseUrl?.match(/\/realms\/(?<realm>.+?)\//)?.groups?.realm
-    }
-  })
+      realm: c.baseUrl?.match(/\/realms\/(?<realm>.+?)\//)?.groups?.realm,
+    };
+  });
   const crs = (await k8sApiMC.listClusterCustomObject(
     CUSTOMRESOURCE_GROUP,
     CUSTOMRESOURCE_VERSION,
@@ -161,7 +180,7 @@ export const cleanup = async () => {
   };
   const crManagedClients = crs.items.map((cr) => ({
     realm: cr.spec.realmId,
-    clientId: cr.spec.clientId
+    clientId: cr.spec.clientId,
   }));
 
   const managedClients = realmAmededClients.filter(isClaimed);
@@ -170,9 +189,9 @@ export const cleanup = async () => {
     if (r.clientId == null) {
       throw new Error(`clientId not defined`);
     }
-    return crManagedClients.some(c => {
-      return !(c.clientId === r.clientId && c.realm === r.realm)
-    })
+    return crManagedClients.some((c) => {
+      return !(c.clientId === r.clientId && c.realm === r.realm);
+    });
   }) as ((typeof managedClients)[number] & { realm: string })[];
 
   for (const clientRepresentation of lingeringClients) {
@@ -193,7 +212,12 @@ export const cleanup = async () => {
       continue;
     }
     await kcClient.ensureAuthed();
-    logger.log(`Deleting lingering managed client ${clientRepresentation.clientId} in realm ${clientRepresentation.realm}`);
-    await kcClient.client.clients.del({ realm: clientRepresentation.realm, id: clientRepresentation.clientId });
+    logger.log(
+      `Deleting lingering managed client ${clientRepresentation.clientId} in realm ${clientRepresentation.realm}`,
+    );
+    await kcClient.client.clients.del({
+      realm: clientRepresentation.realm,
+      id: clientRepresentation.clientId,
+    });
   }
 };

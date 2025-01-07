@@ -35,14 +35,17 @@ async function onEvent(
     await updateCr(selector, { status: { state: "not-synced" } });
   }
 
-  if ((phase === "ADDED" || phase === "MODIFIED") && !(await validateCrHash(zBasicCr.parse(apiObj)))) {
+  if (
+    (phase === "ADDED" || phase === "MODIFIED") &&
+    !(await validateCrHash(zBasicCr.parse(apiObj)))
+  ) {
     try {
       await reconcileResource(parsedApiObj, selector);
     } catch (error) {
       logger.error("Error reconciling resource", {
         selector,
-        error
-      })
+        error,
+      });
       await updateCr(selector, { status: { state: "failed" } });
     }
   }
@@ -60,9 +63,9 @@ export async function startWatching() {
     {},
     onEvent,
     async (err) => {
-      logger.log('Connection closed', err);
-      logger.info('Restarting watcher');
-      await startWatching()
+      logger.log("Connection closed", err);
+      logger.info("Restarting watcher");
+      await startWatching();
     },
   );
 }

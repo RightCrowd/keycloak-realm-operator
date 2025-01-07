@@ -10,10 +10,11 @@ export const zCrdSpec = z.object({
   }).or(z.object({
     valueFrom: z.object({
       secretKeyRef: z.object({
+        namespace: z.string(),
         name: z.string(),
-        key: z.string()
-      })
-    })
+        key: z.string(),
+      }),
+    }),
   })).optional(),
   pruneClient: z.boolean().optional().default(false).describe(
     "Wether or not to delete the client in Keycloak when the CR is deleted",

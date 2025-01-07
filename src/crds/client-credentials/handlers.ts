@@ -34,21 +34,27 @@ async function onEvent(
   const parsedApiObj = zCustomResourceIn.parse(apiObj);
   logger.log(`Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`);
 
-  const selector = makeSelector(parsedApiObj.metadata.namespace, parsedApiObj.metadata.name);
+  const selector = makeSelector(
+    parsedApiObj.metadata.namespace,
+    parsedApiObj.metadata.name,
+  );
 
   // Set initial state
   if (parsedApiObj.status?.state == null) {
     await updateCr(selector, { status: { state: "not-synced" } });
   }
 
-  if ((phase === "ADDED" || phase === "MODIFIED") && !(await validateCrHash(zBasicCr.parse(apiObj)))) {
+  if (
+    (phase === "ADDED" || phase === "MODIFIED") &&
+    !(await validateCrHash(zBasicCr.parse(apiObj)))
+  ) {
     try {
       await reconcileResource(parsedApiObj, selector);
     } catch (error) {
       logger.error("Error reconciling resource", {
         selector,
-        error
-      })
+        error,
+      });
       await updateCr(selector, { status: { state: "failed" } });
     }
   }
@@ -66,9 +72,9 @@ export async function startWatching() {
     {},
     onEvent,
     async (err) => {
-      logger.log('Connection closed', err);
-      logger.info('Restarting watcher');
-      await startWatching()
+      logger.log("Connection closed", err);
+      logger.info("Restarting watcher");
+      await startWatching();
     },
   );
 
