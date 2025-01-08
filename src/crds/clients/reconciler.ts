@@ -19,12 +19,13 @@ const logger = new Logger("managed-client reconciler");
 
 const kcClient = new KeycloakClient();
 
+const keycloakAttributePrefix = "k8s.rightcrowd.com/keycloak-realm-operator";
+
 const claimAttributes = {
-  "k8s.rightcrowd.com/keycloak-realm-operator/claim": "true",
+  [`${keycloakAttributePrefix}/claim`]: "true",
 } satisfies Record<string, string>;
 
-const crSpecRealmAttribute =
-  "k8s.rightcrowd.com/keycloak-realm-operator/cr-spec-serialized";
+const crSpecRealmAttribute = `${keycloakAttributePrefix}/cr-spec-serialized`;
 
 const isClaimed = (
   client: { attributes?: ClientRepresentation["attributes"] },
@@ -209,6 +210,25 @@ export const cleanup = async () => {
       continue;
     }
     if (!oldSpec.pruneClient) {
+      const newAttributes = Object.keys(clientRepresentation.attributes ?? {})
+        ?.reduce((acc: Record<string, string>, attributeKey: string) => {
+          // Only keep the attributes not related to the operator
+          if (!attributeKey.startsWith(keycloakAttributePrefix)) {
+            acc[attributeKey] = clientRepresentation.attributes![attributeKey]!;
+          }
+          return acc;
+        }, {});
+      logger.log(
+        `Dropping claim of client ${clientRepresentation.clientId} in realm ${clientRepresentation.realm}`,
+        { newAttributes },
+      );
+      await kcClient.ensureAuthed();
+      await kcClient.client.clients.update({
+        realm: clientRepresentation.realm,
+        id: clientRepresentation.clientId,
+      }, {
+        attributes: newAttributes,
+      });
       continue;
     }
     await kcClient.ensureAuthed();

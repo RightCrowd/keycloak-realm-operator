@@ -57,7 +57,8 @@ Wether or not to take management of the realm if it were to already exist while 
 An object matching the [RealmRepresentation](https://www.keycloak.org/docs-api/22.0.5/javadocs/org/keycloak/representations/idm/RealmRepresentation.html) class, dictating the configuration of the realm
 
 #### realmImports (optional)
-By specifying this field, one ore more partial realm imports are performed as part of every reconciliation loop. This can be useful to set up resources not directly supported by the operator.
+By specifying this field, one ore more partial realm imports are performed sequentially as part of every reconciliation loop.
+This can be useful to set up resources not directly supported by the operator.
 
 ⚠️ Beware: This performs a simple Keycloak partial realm import. The operator does not 'understand' the contents of this import. This has some consequences one should be aware of:
 - Depending on how it's used, this could override other assets, including configuration or resources which are actively managed by the operator.

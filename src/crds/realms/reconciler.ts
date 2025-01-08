@@ -18,12 +18,13 @@ const logger = new Logger("managed-realm reconciler");
 
 const kcClient = new KeycloakClient();
 
+const keycloakAttributePrefix = "k8s.rightcrowd.com/keycloak-realm-operator";
+
 const claimAttributes = {
-  "k8s.rightcrowd.com/keycloak-realm-operator/claim": "true",
+  [`${keycloakAttributePrefix}/claim`]: "true",
 } satisfies Record<string, string>;
 
-const crSpecRealmAttribute =
-  "k8s.rightcrowd.com/keycloak-realm-operator/cr-spec-serialized";
+const crSpecRealmAttribute = `${keycloakAttributePrefix}/cr-spec-serialized`;
 
 const isClaimed = (
   realm: { attributes?: RealmRepresentation["attributes"] },
@@ -168,6 +169,7 @@ export const cleanup = async () => {
     const specAttributeValue = realmRepresentation.attributes
       ?.[crSpecRealmAttribute];
     let oldSpec: CustomResourceIn["spec"];
+    const realm = realmRepresentation.realm!;
     try {
       oldSpec = zCrdSpec.parse(JSON.parse(specAttributeValue));
     } catch (error) {
@@ -178,10 +180,25 @@ export const cleanup = async () => {
       continue;
     }
     if (!oldSpec.pruneRealm) {
+      const newAttributes = Object.keys(realmRepresentation.attributes ?? {})
+        ?.reduce((acc: Record<string, string>, attributeKey: string) => {
+          // Only keep the attributes not related to the operator
+          if (!attributeKey.startsWith(keycloakAttributePrefix)) {
+            acc[attributeKey] = realmRepresentation.attributes![attributeKey]!;
+          }
+          return acc;
+        }, {});
+      logger.log(`Dropping claim of realm ${realm}`, {
+        newAttributes,
+      });
+      await kcClient.ensureAuthed();
+      await kcClient.client.realms.update({ realm }, {
+        attributes: newAttributes,
+      });
       continue;
     }
-    logger.log(`Deleting lingering managed realm ${realmRepresentation.realm}`);
+    logger.log(`Deleting lingering managed realm ${realm}`);
     await kcClient.ensureAuthed();
-    await kcClient.client.realms.del({ realm: realmRepresentation.realm! });
+    await kcClient.client.realms.del({ realm });
   }
 };
