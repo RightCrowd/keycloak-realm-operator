@@ -21,6 +21,7 @@ k8s_yaml(blob(str(yaml)))
 
 # Example ⬇️
 k8s_yaml('k8s/example/realm.yaml')
+k8s_yaml('k8s/example/realm-with-import.yaml')
 
 k8s_yaml('k8s/example/client.yaml')
 k8s_yaml('k8s/example/defined-secret-client.yaml')
