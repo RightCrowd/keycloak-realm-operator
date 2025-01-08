@@ -109,7 +109,7 @@ export const reconcileResource = async (
   // if (specChanged) {
   await kcClient.ensureAuthed();
   logger.log(`Performing update for realm ${realm}`);
-  kcClient.client.realms.update({ realm }, {
+  await kcClient.client.realms.update({ realm }, {
     ...spec.representation,
     attributes,
     realm: undefined,
@@ -147,11 +147,19 @@ export const reconcileAllResources = async () => {
     selector: makeSelector(cr.metadata.name),
   }));
 
-  for (const crAndSelector of crsAndSelectors) {
-    await reconcileResource(
-      zCustomResourceIn.parse(crAndSelector.cr),
-      crAndSelector.selector,
-    );
+  for (const { cr, selector } of crsAndSelectors) {
+    try {
+      await reconcileResource(
+        zCustomResourceIn.parse(cr),
+        selector,
+      );
+    } catch (error) {
+      logger.error("Error reconciling resource", {
+        selector,
+        error,
+      });
+      await updateCr(selector, { status: { state: "failed" } });
+    }
   }
 };
 
