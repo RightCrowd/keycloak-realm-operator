@@ -83,7 +83,6 @@ export const reconcileResource = async (
         attributes: {
           ...currentKcRealm.attributes,
           ...claimAttributes,
-          [crSpecRealmAttribute]: JSON.stringify(spec),
         },
       });
       realmClaimed = true;
@@ -96,15 +95,27 @@ export const reconcileResource = async (
     return;
   }
 
-  if (spec.representation != null) {
-    await kcClient.ensureAuthed();
-    logger.log(`Performing update for realm ${realm}`);
-    kcClient.client.realms.update({ realm }, {
-      ...spec.representation,
-      realm: undefined,
-      id: undefined,
-    });
-  }
+  // const specChanged =
+  //   JSON.stringify(currentKcRealm.attributes?.[crSpecRealmAttribute]) !==
+  //     JSON.stringify(spec);
+
+  const attributes = {
+    ...currentKcRealm.attributes,
+    ...claimAttributes,
+    [crSpecRealmAttribute]: JSON.stringify(spec),
+  };
+
+  // // TODO: Maybe the specChanged check should simply not be here? If someone goes in and manually changes something, we won't detect it
+  // if (specChanged) {
+  await kcClient.ensureAuthed();
+  logger.log(`Performing update for realm ${realm}`);
+  kcClient.client.realms.update({ realm }, {
+    ...spec.representation,
+    attributes,
+    realm: undefined,
+    id: undefined,
+  });
+  // }
 
   if (spec.realmImports != null && spec.realmImports.length > 0) {
     for (const [index, realmImport] of spec.realmImports.entries()) {

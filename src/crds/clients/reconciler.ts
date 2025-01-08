@@ -96,7 +96,6 @@ export const reconcileResource = async (
         attributes: {
           ...currentKcClient.attributes,
           ...claimAttributes,
-          [crSpecRealmAttribute]: JSON.stringify(spec),
         },
       });
       claimed = true;
@@ -126,16 +125,28 @@ export const reconcileResource = async (
     }
   }
 
-  if (spec.representation != null) {
-    await kcClient.ensureAuthed();
-    logger.log(`Performing update for client ${id} in realm ${realm}`);
-    kcClient.client.clients.update({ realm, id }, {
-      ...spec.representation,
-      secret,
-      id: undefined,
-      clientId: undefined,
-    });
-  }
+  // const specChanged =
+  //   JSON.stringify(currentKcClient.attributes?.[crSpecRealmAttribute]) !==
+  //     JSON.stringify(spec);
+
+  const attributes = {
+    ...currentKcClient.attributes,
+    ...claimAttributes,
+    [crSpecRealmAttribute]: JSON.stringify(spec),
+  };
+
+  // // TODO: Maybe the specChanged check should simply not be here? If someone goes in and manually changes something, we won't detect it
+  // if (specChanged) {
+  await kcClient.ensureAuthed();
+  logger.log(`Performing update for client ${id} in realm ${realm}`);
+  kcClient.client.clients.update({ realm, id }, {
+    ...spec.representation,
+    secret,
+    attributes,
+    id: undefined,
+    clientId: undefined,
+  });
+  // }
 
   await updateCr(selector, { status: { state: "synced" } });
 };
@@ -160,18 +171,6 @@ export const reconcileAllResources = async () => {
 };
 
 export const cleanup = async () => {
-  await kcClient.ensureAuthed();
-  const clients = await kcClient.client.clients.find();
-  const realmAmededClients = clients.map((c) => {
-    if (c.clientId == null) {
-      throw new Error(`clientId not defined`);
-    }
-    return {
-      ...c,
-      clientId: c.clientId,
-      realm: c.baseUrl?.match(/\/realms\/(?<realm>.+?)\//)?.groups?.realm,
-    };
-  });
   const crs = (await k8sApiMC.listClusterCustomObject(
     CUSTOMRESOURCE_GROUP,
     CUSTOMRESOURCE_VERSION,
@@ -184,60 +183,80 @@ export const cleanup = async () => {
     clientId: cr.spec.clientId,
   }));
 
-  const managedClients = realmAmededClients.filter(isClaimed);
-
-  const lingeringClients = managedClients.filter((r) => {
-    if (r.clientId == null) {
-      throw new Error(`clientId not defined`);
-    }
-    return crManagedClients.some((c) => {
-      return !(c.clientId === r.clientId && c.realm === r.realm);
-    });
-  }) as ((typeof managedClients)[number] & { realm: string })[];
-
-  for (const clientRepresentation of lingeringClients) {
-    // Get the old spec from the realm attributes
-    const specAttributeValue = clientRepresentation.attributes
-      ?.[crSpecRealmAttribute];
-    let oldSpec: CustomResourceIn["spec"];
-    try {
-      oldSpec = zCrdSpec.parse(JSON.parse(specAttributeValue));
-    } catch (error) {
-      logger.error(
-        `Could not parse old spec from attribute ${crSpecRealmAttribute}`,
-        error,
-      );
+  await kcClient.ensureAuthed();
+  const realms = await kcClient.client.realms.find();
+  for (const realmRepresentation of realms) {
+    const { realm } = realmRepresentation;
+    if (realm == null) {
       continue;
     }
-    if (!oldSpec.pruneClient) {
-      const newAttributes = Object.keys(clientRepresentation.attributes ?? {})
-        ?.reduce((acc: Record<string, string>, attributeKey: string) => {
-          // Only keep the attributes not related to the operator
-          if (!attributeKey.startsWith(keycloakAttributePrefix)) {
-            acc[attributeKey] = clientRepresentation.attributes![attributeKey]!;
-          }
-          return acc;
-        }, {});
-      logger.log(
-        `Dropping claim of client ${clientRepresentation.clientId} in realm ${clientRepresentation.realm}`,
-        { newAttributes },
-      );
-      await kcClient.ensureAuthed();
-      await kcClient.client.clients.update({
-        realm: clientRepresentation.realm,
-        id: clientRepresentation.clientId,
-      }, {
-        attributes: newAttributes,
-      });
-      continue;
-    }
+
     await kcClient.ensureAuthed();
-    logger.log(
-      `Deleting lingering managed client ${clientRepresentation.clientId} in realm ${clientRepresentation.realm}`,
-    );
-    await kcClient.client.clients.del({
-      realm: clientRepresentation.realm,
-      id: clientRepresentation.clientId,
+    const clients = await kcClient.client.clients.find({ realm });
+
+    const managedClients = clients.filter(isClaimed);
+    const lingeringClients = managedClients.filter((r) => {
+      if (r.clientId == null) {
+        throw new Error(`clientId not defined`);
+      }
+      return crManagedClients.some((cr) => {
+        return !(cr.clientId === r.clientId && cr.realm === realm);
+      });
     });
+
+    for (const clientRepresentation of lingeringClients) {
+      if (clientRepresentation.clientId == null) {
+        continue;
+      }
+      // Get the old spec from the attributes
+      const specAttributeValue = clientRepresentation.attributes
+        ?.[crSpecRealmAttribute];
+      let oldSpec: CustomResourceIn["spec"];
+      try {
+        oldSpec = zCrdSpec.parse(JSON.parse(specAttributeValue));
+      } catch (error) {
+        logger.error(
+          `Could not parse old spec from attribute ${crSpecRealmAttribute}`,
+          error,
+        );
+        continue;
+      }
+      if (!oldSpec.pruneClient) {
+        const newAttributes = Object.keys(clientRepresentation.attributes ?? {})
+          ?.reduce(
+            (acc: Record<string, string | null>, attributeKey: string) => {
+              // Only keep the attributes not related to the operator
+              if (!attributeKey.startsWith(keycloakAttributePrefix)) {
+                acc[attributeKey] = clientRepresentation
+                  .attributes![attributeKey]!;
+              } else {
+                acc[attributeKey] = null;
+              }
+              return acc;
+            },
+            {},
+          );
+        logger.log(
+          `Dropping claim of client ${clientRepresentation.clientId} in realm ${realm}`,
+          { newAttributes },
+        );
+        await kcClient.ensureAuthed();
+        await kcClient.client.clients.update({
+          realm,
+          id: clientRepresentation.clientId,
+        }, {
+          attributes: newAttributes,
+        });
+        continue;
+      }
+      await kcClient.ensureAuthed();
+      logger.log(
+        `Deleting lingering managed client ${clientRepresentation.clientId} in realm ${realm}`,
+      );
+      await kcClient.client.clients.del({
+        realm,
+        id: clientRepresentation.clientId,
+      });
+    }
   }
 };
