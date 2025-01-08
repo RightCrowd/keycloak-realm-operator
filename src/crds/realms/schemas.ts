@@ -14,6 +14,12 @@ export const zCrdSpec = z.object({
   representation: z.any().describe(
     "Realm representation following the RealmRepresentation spec",
   ),
+  realmImports: z.array(
+    z.object({
+      import: z.any(),
+      ifResourceExists: z.enum(['OVERWRITE', 'SKIP'])
+    })
+  ).optional(),
 });
 
 export const zCrdStatusIn = z.object({

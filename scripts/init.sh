@@ -4,6 +4,9 @@ set -e
 
 trap 'rm -rf -- "$tempdir"' EXIT
 
+# Install git hooks
+ln -s "$(pwd)/hooks" "$(pwd)/.git/hooks"
+
 # Download the manifests at https://github.com/RightCrowd/helm-charts/tree/main/charts/keycloak-realm-operator to ./k8s/helm if that directory does not yet exist
 if ! [[ -d "k8s/helm" ]] || ! [ -n "$(ls -A k8s/helm)" ]; then
   echo "k8s/helm does not exist or is empty, downloading..."

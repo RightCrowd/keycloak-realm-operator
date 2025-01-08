@@ -176,11 +176,11 @@ spec:
   fallbackStrategy: skip # Default is "skip". Can be set to "error" to fail the reconciliation if the client is not found in Keycloak.
   targetSecretTemplate:
     - key: realm
-      template: {{ .realm }}
+      template: "{{ .realm }}"
     - key: clientId
-      template: {{ .clientId }}
+      template: "{{ .clientId }}"
     - key: clientSecret
-      template: {{ .clientSecret }}
+      template: "{{ .clientSecret }}"
     - key: connectionString
       template: "https://{{ .clientId }}:{{ .clientSecret }}@funny-shop-api"
 ```

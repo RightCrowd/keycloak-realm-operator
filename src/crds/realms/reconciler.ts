@@ -105,6 +105,17 @@ export const reconcileResource = async (
     });
   }
 
+  if (spec.realmImports != null && spec.realmImports.length > 0) {
+    for (const [index, realmImport] of spec.realmImports.entries()) {
+      await kcClient.ensureAuthed();
+      logger.log(`Performing partial import (index ${index}) for realm ${realm}`);
+      await kcClient.client.realms.partialImport({ realm, rep: {
+        ifResourceExists: realmImport.ifResourceExists,
+        ...realmImport.import
+      } }, { catchNotFound: true });
+    }
+  }
+
   await updateCr(selector, { status: { state: "synced" } });
 };
 
