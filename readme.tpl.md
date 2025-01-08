@@ -9,6 +9,7 @@ While there is a little bit of overlap with the [Keycloak Operator](https://www.
 - [x] Sync client credentials from Keycloak to Kubernetes secrets (Implemented ✅)
 - [x] Create and actively manage Keycloak realms from Kubernetes CRs (Implemented ✅)
 - [x] Create and actively manage Keycloak clients from Kubernetes CRs (Implemented ✅)
+- [x] Realm import which runs every reconciliation in order to cover for management of resources in Keycloak that are not yet supported by the operator. (Implemented ✅)
 
 # Installation with Helm
 ```sh
@@ -54,6 +55,21 @@ Wether or not to take management of the realm if it were to already exist while 
 
 #### representation (optional)
 An object matching the [RealmRepresentation](https://www.keycloak.org/docs-api/22.0.5/javadocs/org/keycloak/representations/idm/RealmRepresentation.html) class, dictating the configuration of the realm
+
+#### realmImports (optional)
+By specifying this field, one ore more partial realm imports are performed as part of every reconciliation loop. This can be useful to set up resources not supported by the operator.
+It has several downsides and should be used carefully.
+
+⚠️ Beware: This performs a simple Keycloak partial realm import. The operator does not 'understand' the contents of this import. This has some consequences one should be aware of:
+- Depending on how it's used, this could override other assets, including configuration or resources which are actively managed by the operator.
+  Example: It's perfectly possible to specify a client in the realmImport that is also defined using the KeycloakClient CR. If the `ifResourceExists` field is set to `OVERWRITE`, this would lead to an endless client update loop.
+- There is no deletion mechanism. The operator does not actively manage what's specified in the the import, it simply periodically imports it. If a resource was present in the import before and is deleted afterwards, it will not be deleted by the operator.
+
+The 'import' field should be an object matching the [PartialImportRepresentation](https://www.keycloak.org/docs-api/21.0.2/javadocs/org/keycloak/representations/idm/PartialImportRepresentation.html) class
+
+```yaml
+# ./k8s/example/realm-with-import.yaml#L10-L22
+```
 
 ### Example
 

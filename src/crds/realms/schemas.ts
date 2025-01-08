@@ -16,9 +16,10 @@ export const zCrdSpec = z.object({
   ),
   realmImports: z.array(
     z.object({
+      // TODO: ideally we'd validate this, but that's a little much for now
       import: z.any(),
-      ifResourceExists: z.enum(['OVERWRITE', 'SKIP'])
-    })
+      ifResourceExists: z.enum(["OVERWRITE", "SKIP"]),
+    }),
   ).optional(),
 });
 

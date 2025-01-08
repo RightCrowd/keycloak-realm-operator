@@ -1,0 +1,22 @@
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: KeycloakRealm
+metadata:
+  name: realm-with-import
+spec:
+  realmId: realm-with-import
+  displayName: Realm With Import
+  pruneRealm: false
+  claimRealm: true
+  realmImports:
+    - ifResourceExists: OVERWRITE
+      import:
+        eventsListeners:
+          - jboss-logging
+          - metrics-listener
+        roles:
+          realm:
+            - name: offline_access
+              description: ${role_offline-access}
+              composite: false
+              clientRole: false
+              attributes: {}
