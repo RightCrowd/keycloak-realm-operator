@@ -68,5 +68,6 @@ export const scheduleJobs = async () => {
 };
 
 export const scheduleJobNow = async () => {
+  logger.log("Promoting cleanup job");
   await queue.promoteJobs();
 };

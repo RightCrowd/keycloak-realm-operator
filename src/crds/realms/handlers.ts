@@ -9,12 +9,13 @@ import {
   zCustomResourceIn,
   zCustomResourceOut,
 } from "./schemas.ts";
-import { cleanup, reconcileResource } from "./reconciler.ts";
 import {
   updateCr as updateCrGeneric,
   validateCrHash,
   zBasicCr,
 } from "../crd-mgmt-utils.ts";
+import { addReconciliationJob } from "./reconciliationQueue.ts";
+import { scheduleJobNow as promoteCleanupJob } from "./cleanupQueue.ts";
 
 const logger = new Logger("managed-realms crd handler");
 
@@ -42,20 +43,16 @@ async function onEvent(
     (phase === "ADDED" || phase === "MODIFIED") &&
     !(await validateCrHash(zBasicCr.parse(apiObj)))
   ) {
-    try {
-      await reconcileResource(parsedApiObj, selector);
-    } catch (error) {
-      logger.error("Error reconciling resource", {
+    await addReconciliationJob({
+      instances: [{
+        apiObj: parsedApiObj,
         selector,
-        error,
-      });
-      await updateCr(selector, { status: { state: "failed" } });
-    }
+      }],
+    });
   }
 
   if (phase === "DELETED") {
-    logger.log("Running cleanup");
-    await cleanup();
+    await promoteCleanupJob();
   }
 }
 
