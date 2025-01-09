@@ -87,6 +87,9 @@ export const scheduleJobs = async () => {
       data: {
         all: true,
       },
+      opts: {
+        priority: 100,
+      },
     },
   );
 };

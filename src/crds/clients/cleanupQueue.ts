@@ -64,6 +64,9 @@ export const scheduleJobs = async () => {
     {
       name: jobName,
       data: {},
+      opts: {
+        priority: 100,
+      },
     },
   );
 };
