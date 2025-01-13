@@ -29,7 +29,7 @@ async function onEvent(
   const parsedApiObj = zCustomResourceIn.parse(apiObj);
 
   const selector = makeSelector(parsedApiObj.metadata.name);
-  logger.log(
+  logger.debug(
     `Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`,
     selector,
   );

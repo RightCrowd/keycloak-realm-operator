@@ -37,7 +37,7 @@ async function onEvent(
     parsedApiObj.metadata.namespace,
     parsedApiObj.metadata.name,
   );
-  logger.log(
+  logger.debug(
     `Event received for CRD ${CUSTOMRESOURCE_PLURAL}: ${phase}`,
     selector,
   );
