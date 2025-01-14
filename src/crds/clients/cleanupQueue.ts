@@ -3,6 +3,7 @@ import { cleanup } from "./reconciler.ts";
 import { Logger } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
 import { CUSTOMRESOURCE_PLURAL } from "./schemas.ts";
+import { getConfig } from "../../config.ts";
 
 const logger = new Logger("managed-realms:cleanupQueue");
 
@@ -52,7 +53,7 @@ export const worker = new Worker<
       username,
     },
     concurrency: 1,
-    autorun: true,
+    autorun: getConfig().ENABLE_WORKERS,
   },
 );
 
@@ -63,10 +64,14 @@ export const scheduleJobs = async () => {
     {
       name: jobName,
       data: {},
+      opts: {
+        priority: 100,
+      },
     },
   );
 };
 
 export const scheduleJobNow = async () => {
+  logger.log("Promoting cleanup job");
   await queue.promoteJobs();
 };

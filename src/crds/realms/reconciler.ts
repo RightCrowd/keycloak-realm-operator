@@ -47,93 +47,101 @@ export const reconcileResource = async (
   );
   await updateCr(selector, { status: { state: "syncing" } });
 
-  const { spec } = apiObj;
-  const { realmId: realm, displayName } = spec;
+  try {
+    const { spec } = apiObj;
+    const { realmId: realm, displayName } = spec;
 
-  await kcClient.ensureAuthed();
-  let currentKcRealm = await kcClient.client.realms.findOne({
-    realm,
-  });
-
-  if (currentKcRealm == null) {
-    // The realm does not exist yet. Let's create it
-    logger.log(`Creating and claiming Keycloak realm ${realm}`);
     await kcClient.ensureAuthed();
-    await kcClient.client.realms.create({
+    let currentKcRealm = await kcClient.client.realms.findOne({
       realm,
-      attributes: {
-        ...claimAttributes,
-        [crSpecRealmAttribute]: JSON.stringify(spec),
-      },
-      displayName,
     });
-    await kcClient.ensureAuthed();
-    currentKcRealm = (await kcClient.client.realms.findOne({
-      realm,
-    }))!;
-  }
 
-  let realmClaimed = isClaimed(currentKcRealm);
-  if (!realmClaimed) {
-    logger.log(`Realm ${realm} is unclaimed`);
-    if (spec.claimRealm) {
-      logger.log(`Claiming realm ${realm}`);
+    if (currentKcRealm == null) {
+      // The realm does not exist yet. Let's create it
+      logger.log(`Creating and claiming Keycloak realm ${realm}`);
       await kcClient.ensureAuthed();
-      await kcClient.client.realms.update({ realm }, {
-        attributes: {
-          ...currentKcRealm.attributes,
-          ...claimAttributes,
-        },
-      });
-      realmClaimed = true;
-    }
-  }
-
-  if (!realmClaimed) {
-    logger.error(`Realm ${realm} is not claimed and claiming is disabled`);
-    await updateCr(selector, { status: { state: "failed" } });
-    return;
-  }
-
-  // const specChanged =
-  //   JSON.stringify(currentKcRealm.attributes?.[crSpecRealmAttribute]) !==
-  //     JSON.stringify(spec);
-
-  const attributes = {
-    ...currentKcRealm.attributes,
-    ...claimAttributes,
-    [crSpecRealmAttribute]: JSON.stringify(spec),
-  };
-
-  // // TODO: Maybe the specChanged check should simply not be here? If someone goes in and manually changes something, we won't detect it
-  // if (specChanged) {
-  await kcClient.ensureAuthed();
-  logger.log(`Performing update for realm ${realm}`);
-  await kcClient.client.realms.update({ realm }, {
-    ...spec.representation,
-    attributes,
-    realm: undefined,
-    id: undefined,
-  });
-  // }
-
-  if (spec.realmImports != null && spec.realmImports.length > 0) {
-    for (const [index, realmImport] of spec.realmImports.entries()) {
-      await kcClient.ensureAuthed();
-      logger.log(
-        `Performing partial import (index ${index}) for realm ${realm}`,
-      );
-      await kcClient.client.realms.partialImport({
+      await kcClient.client.realms.create({
         realm,
-        rep: {
-          ifResourceExists: realmImport.ifResourceExists,
-          ...realmImport.import,
+        attributes: {
+          ...claimAttributes,
+          [crSpecRealmAttribute]: JSON.stringify(spec),
         },
-      }, { catchNotFound: true });
+        displayName,
+      });
+      await kcClient.ensureAuthed();
+      currentKcRealm = (await kcClient.client.realms.findOne({
+        realm,
+      }))!;
     }
-  }
 
-  await updateCr(selector, { status: { state: "synced" } });
+    let realmClaimed = isClaimed(currentKcRealm);
+    if (!realmClaimed) {
+      logger.log(`Realm ${realm} is unclaimed`);
+      if (spec.claimRealm) {
+        logger.log(`Claiming realm ${realm}`);
+        await kcClient.ensureAuthed();
+        await kcClient.client.realms.update({ realm }, {
+          attributes: {
+            ...currentKcRealm.attributes,
+            ...claimAttributes,
+          },
+        });
+        realmClaimed = true;
+      }
+    }
+
+    if (!realmClaimed) {
+      logger.error(`Realm ${realm} is not claimed and claiming is disabled`);
+      await updateCr(selector, { status: { state: "failed" } });
+      return;
+    }
+
+    // const specChanged =
+    //   JSON.stringify(currentKcRealm.attributes?.[crSpecRealmAttribute]) !==
+    //     JSON.stringify(spec);
+
+    const attributes = {
+      ...currentKcRealm.attributes,
+      ...claimAttributes,
+      [crSpecRealmAttribute]: JSON.stringify(spec),
+    };
+
+    // // TODO: Maybe the specChanged check should simply not be here? If someone goes in and manually changes something, we won't detect it
+    // if (specChanged) {
+    await kcClient.ensureAuthed();
+    logger.log(`Performing update for realm ${realm}`);
+    await kcClient.client.realms.update({ realm }, {
+      ...spec.representation,
+      attributes,
+      realm: undefined,
+      id: undefined,
+    });
+    // }
+
+    if (spec.realmImports != null && spec.realmImports.length > 0) {
+      for (const [index, realmImport] of spec.realmImports.entries()) {
+        await kcClient.ensureAuthed();
+        logger.log(
+          `Performing partial import (index ${index}) for realm ${realm}`,
+        );
+        await kcClient.client.realms.partialImport({
+          realm,
+          rep: {
+            ifResourceExists: realmImport.ifResourceExists,
+            ...realmImport.import,
+          },
+        }, { catchNotFound: true });
+      }
+    }
+
+    await updateCr(selector, { status: { state: "synced" } });
+  } catch (error) {
+    logger.error("Error reconciling resource", {
+      selector,
+      error,
+    });
+    await updateCr(selector, { status: { state: "failed" } });
+  }
 };
 
 export const reconcileAllResources = async () => {

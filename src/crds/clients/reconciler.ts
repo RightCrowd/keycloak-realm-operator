@@ -48,107 +48,117 @@ export const reconcileResource = async (
   );
   await updateCr(selector, { status: { state: "syncing" } });
 
-  const { spec } = apiObj;
-  const { realmId: realm, clientId: id } = spec;
+  try {
+    const { spec } = apiObj;
+    const { realmId: realm, clientId: id } = spec;
 
-  // Make sure the realm exists
-  await kcClient.ensureAuthed();
-  if ((await kcClient.client.realms.findOne({ realm })) == null) {
-    logger.error(`Realm not found ${realm}`);
-    await updateCr(selector, { status: { state: "failed" } });
-    return;
-  }
-
-  await kcClient.ensureAuthed();
-  let currentKcClient = await kcClient.client.clients.findOne({
-    realm,
-    id,
-  });
-
-  if (currentKcClient == null) {
-    // The client does not exist yet. Let's create it
-    logger.log(`Creating and claiming Keycloak client ${id} in realm ${realm}`);
+    // Make sure the realm exists
     await kcClient.ensureAuthed();
-    await kcClient.client.clients.create({
+    if ((await kcClient.client.realms.findOne({ realm })) == null) {
+      logger.error(`Realm not found ${realm}`);
+      await updateCr(selector, { status: { state: "failed" } });
+      return;
+    }
+
+    await kcClient.ensureAuthed();
+    let currentKcClient = await kcClient.client.clients.findOne({
       realm,
       id,
-      clientId: id,
-      name: spec.name,
-      attributes: {
-        ...claimAttributes,
-        [crSpecRealmAttribute]: JSON.stringify(spec),
-      },
     });
-    await kcClient.ensureAuthed();
-    currentKcClient = (await kcClient.client.clients.findOne({
-      realm,
-      id,
-    }))!;
-  }
 
-  let claimed = isClaimed(currentKcClient);
-  if (!claimed) {
-    logger.log(`Client ${id} is unclaimed in realm ${realm}`);
-    if (spec.claimClient) {
-      logger.log(`Claiming client ${id} in realm ${realm}`);
+    if (currentKcClient == null) {
+      // The client does not exist yet. Let's create it
+      logger.log(
+        `Creating and claiming Keycloak client ${id} in realm ${realm}`,
+      );
       await kcClient.ensureAuthed();
-      await kcClient.client.clients.update({ realm, id }, {
+      await kcClient.client.clients.create({
+        realm,
+        id,
+        clientId: id,
+        name: spec.name,
         attributes: {
-          ...currentKcClient.attributes,
           ...claimAttributes,
+          [crSpecRealmAttribute]: JSON.stringify(spec),
         },
       });
-      claimed = true;
+      await kcClient.ensureAuthed();
+      currentKcClient = (await kcClient.client.clients.findOne({
+        realm,
+        id,
+      }))!;
     }
-  }
 
-  if (!claimed) {
-    logger.error(
-      `Client ${id} in realm ${realm} is not claimed and claiming is disabled`,
-    );
-    await updateCr(selector, { status: { state: "failed" } });
-    return;
-  }
-
-  let secret: string | undefined;
-  if (spec.secret != null) {
-    if ("value" in spec.secret) {
-      secret = spec.secret.value;
-    } else {
-      const { namespace, name, key } = spec.secret.valueFrom.secretKeyRef;
-      const k8sSecretData =
-        (await k8sApiPods.readNamespacedSecret(name, namespace)).body;
-      const encodedSecretValue = k8sSecretData.data?.[key];
-      if (encodedSecretValue != null) {
-        secret = atob(encodedSecretValue);
+    let claimed = isClaimed(currentKcClient);
+    if (!claimed) {
+      logger.log(`Client ${id} is unclaimed in realm ${realm}`);
+      if (spec.claimClient) {
+        logger.log(`Claiming client ${id} in realm ${realm}`);
+        await kcClient.ensureAuthed();
+        await kcClient.client.clients.update({ realm, id }, {
+          attributes: {
+            ...currentKcClient.attributes,
+            ...claimAttributes,
+          },
+        });
+        claimed = true;
       }
     }
+
+    if (!claimed) {
+      logger.error(
+        `Client ${id} in realm ${realm} is not claimed and claiming is disabled`,
+      );
+      await updateCr(selector, { status: { state: "failed" } });
+      return;
+    }
+
+    let secret: string | undefined;
+    if (spec.secret != null) {
+      if ("value" in spec.secret) {
+        secret = spec.secret.value;
+      } else {
+        const { namespace, name, key } = spec.secret.valueFrom.secretKeyRef;
+        const k8sSecretData =
+          (await k8sApiPods.readNamespacedSecret(name, namespace)).body;
+        const encodedSecretValue = k8sSecretData.data?.[key];
+        if (encodedSecretValue != null) {
+          secret = atob(encodedSecretValue);
+        }
+      }
+    }
+
+    // const specChanged =
+    //   JSON.stringify(currentKcClient.attributes?.[crSpecRealmAttribute]) !==
+    //     JSON.stringify(spec);
+
+    const attributes = {
+      ...currentKcClient.attributes,
+      ...claimAttributes,
+      [crSpecRealmAttribute]: JSON.stringify(spec),
+    };
+
+    // // TODO: Maybe the specChanged check should simply not be here? If someone goes in and manually changes something, we won't detect it
+    // if (specChanged) {
+    await kcClient.ensureAuthed();
+    logger.log(`Performing update for client ${id} in realm ${realm}`);
+    await kcClient.client.clients.update({ realm, id }, {
+      ...spec.representation,
+      secret,
+      attributes,
+      id: undefined,
+      clientId: undefined,
+    });
+    // }
+
+    await updateCr(selector, { status: { state: "synced" } });
+  } catch (error) {
+    logger.error("Error reconciling resource", {
+      selector,
+      error,
+    });
+    await updateCr(selector, { status: { state: "failed" } });
   }
-
-  // const specChanged =
-  //   JSON.stringify(currentKcClient.attributes?.[crSpecRealmAttribute]) !==
-  //     JSON.stringify(spec);
-
-  const attributes = {
-    ...currentKcClient.attributes,
-    ...claimAttributes,
-    [crSpecRealmAttribute]: JSON.stringify(spec),
-  };
-
-  // // TODO: Maybe the specChanged check should simply not be here? If someone goes in and manually changes something, we won't detect it
-  // if (specChanged) {
-  await kcClient.ensureAuthed();
-  logger.log(`Performing update for client ${id} in realm ${realm}`);
-  await kcClient.client.clients.update({ realm, id }, {
-    ...spec.representation,
-    secret,
-    attributes,
-    id: undefined,
-    clientId: undefined,
-  });
-  // }
-
-  await updateCr(selector, { status: { state: "synced" } });
 };
 
 export const reconcileAllResources = async () => {

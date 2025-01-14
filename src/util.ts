@@ -25,11 +25,11 @@ export class Logger extends Console {
   }
 
   override log(message: string, extraData?: unknown) {
-    super.log(this.format(message, extraData, "debug"));
+    super.log(this.format(message, extraData, "info"));
   }
 
-  override info(message: string, extraData?: unknown) {
-    super.error(this.format(message, extraData, "info"));
+  override debug(message: string, extraData?: unknown) {
+    super.error(this.format(message, extraData, "debug"));
   }
 
   override error(message: string, extraData?: unknown) {
