@@ -7,6 +7,9 @@ import { Buffer } from "node:buffer";
 import { encodeHex } from "jsr:@std/encoding/hex";
 import { k8sApiMC } from "../k8s.ts";
 import { z } from "npm:zod";
+import { k8sApiPods } from "../k8s.ts";
+import { CoreV1Event } from "npm:@kubernetes/client-node";
+import { getConfig } from "../config.ts";
 
 const logger = new Logger("crd-mgmt-utils");
 
@@ -89,6 +92,7 @@ export type CrSelector = {
   plural: string;
   name: string;
   namespace?: string;
+  kind: string;
 };
 
 type CrUpdates = {
@@ -236,3 +240,37 @@ export const updateCr = async <Schema extends CrUpdates = CrUpdates>(
     );
   }
 };
+
+type Event = {
+  type?: 'Normal' | 'Warning',
+  message: string
+  reason?: string
+}
+
+export const logCrEvent = async (selector: CrSelector, event: Event) => {
+  const date = new Date()
+
+  const e: CoreV1Event = {
+    apiVersion: "v1",
+    kind: "Event",
+    metadata: {
+      name: [selector.group, selector.plural, selector.name, selector.namespace, date.getTime()].filter(Boolean).join('-'),
+      namespace: getConfig().OPERATOR_NAMESPACE,
+    },
+    involvedObject: {
+      apiVersion: selector.version,
+      kind: selector.kind,
+      name: selector.name,
+      namespace: selector.namespace,
+    },
+    type: event.type ?? 'Normal',
+    reason: event.reason,
+    message: event.message,
+    source: {
+      component: "keycloak-realm-operator",
+    },
+    eventTime: date,
+  };
+
+  await k8sApiPods.createNamespacedEvent(selector.namespace!, e)
+}
