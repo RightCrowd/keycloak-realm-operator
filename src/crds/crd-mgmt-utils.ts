@@ -95,6 +95,10 @@ export type CrSelector = {
   kind: string;
 };
 
+export type CrSelectorWithUid = CrSelector & {
+  uid: string;
+};
+
 type CrUpdates = {
   spec?: any;
   status?: any;
@@ -248,8 +252,7 @@ type Event = {
 };
 
 export const logCrEvent = async (
-  selector: CrSelector,
-  uid: string,
+  selector: CrSelectorWithUid,
   event: Event,
 ) => {
   const date = new Date(new Date().setMilliseconds(0));
@@ -272,7 +275,7 @@ export const logCrEvent = async (
       kind: selector.kind,
       name: selector.name,
       namespace: selector.namespace,
-      uid,
+      uid: selector.uid,
     },
     type: event.type ?? "Normal",
     reason: event.reason,

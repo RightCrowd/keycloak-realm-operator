@@ -14,6 +14,7 @@ import { Logger } from "../../util.ts";
 import { parse } from "npm:@ctrl/golang-template";
 import { type CrSelector, logCrEvent } from "../crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
+import type { CrSelectorWithUid } from "../crd-mgmt-utils.ts";
 
 const logger = new Logger("client-credentials reconciler");
 
@@ -53,8 +54,12 @@ const generateEncodedSecretData =
 
 export const reconcileResource = async (
   apiObj: CustomResourceIn,
-  selector: CrSelector,
+  _selector: CrSelector,
 ) => {
+  const selector: CrSelectorWithUid = {
+    ..._selector,
+    uid: apiObj.metadata.uid,
+  };
   logger.log(
     `Reconciling CR`,
     selector,
@@ -80,11 +85,11 @@ export const reconcileResource = async (
     } catch (_err) {
       console.error(_err);
       // Client does not exist
-      await logCrEvent(selector, apiObj.metadata.uid, {
+      await logCrEvent(selector, {
         message:
           `Client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} is not found`,
         type: "Warning",
-        reason: "Failed",
+        reason: "Syncing",
       });
     }
     return targettedKcClient;
@@ -112,11 +117,11 @@ export const reconcileResource = async (
 
     if (clientId == null || clientSecret == null) {
       await updateCr(selector, { status: { state: "failed" } });
-      await logCrEvent(selector, apiObj.metadata.uid, {
+      await logCrEvent(selector, {
         message:
           `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not posess id or secret, or client does not exist`,
         type: "Warning",
-        reason: "Failed",
+        reason: "Syncing",
       });
       if (apiObj.spec.fallbackStrategy === "skip") {
         logger.log(
@@ -129,7 +134,7 @@ export const reconcileResource = async (
       );
     }
 
-    await logCrEvent(selector, apiObj.metadata.uid, {
+    await logCrEvent(selector, {
       message:
         `Updating secret ${apiObj.spec.targetSecretName} in namespace ${apiObj.metadata.namespace}`,
       reason: "Syncing",
@@ -154,6 +159,10 @@ export const reconcileResource = async (
         ),
       },
     );
+    await logCrEvent(selector, {
+      message: `Synced successfully`,
+      reason: "Syncing",
+    });
     await updateCr(selector, { status: { state: "synced" } });
     return;
   }
@@ -175,7 +184,7 @@ export const reconcileResource = async (
     );
   }
 
-  await logCrEvent(selector, apiObj.metadata.uid, {
+  await logCrEvent(selector, {
     message:
       `Creating secret ${apiObj.spec.targetSecretName} in namespace ${apiObj.metadata.namespace}`,
     reason: "Syncing",
