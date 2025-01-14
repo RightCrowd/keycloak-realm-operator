@@ -177,7 +177,7 @@ export const reconcileResource = async (
     await logCrEvent(selector, {
       message: `Unknown error while reconciling resource: ${error}`,
       reason: "Syncing",
-      type: 'Warning'
+      type: "Warning",
     });
     await updateCr(selector, { status: { state: "failed" } });
   }

@@ -88,20 +88,20 @@ realmImports:
 ### Example
 
 ```yaml
-# apiVersion: k8s.rightcrowd.com/v1alpha1
-# kind: KeycloakRealm
-# metadata:
-#   name: funny-realm
-# spec:
-#   realmId: funny
-#   displayName: Funny Haha
-#   pruneRealm: false
-#   claimRealm: true
-#   representation:
-#     loginWithEmailAllowed: false
-#     registrationEmailAsUsername: true
-#     emailTheme: keycloak
-#     displayNameHtml: "<h5>Funny Realm</h5>"
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: KeycloakRealm
+metadata:
+  name: funny-realm
+spec:
+  realmId: funny
+  displayName: Funny Haha
+  pruneRealm: true
+  claimRealm: true
+  representation:
+    loginWithEmailAllowed: false
+    registrationEmailAsUsername: true
+    emailTheme: keycloak
+    displayNameHtml: "<h5>Funny Realm</h5>"
 ```
 
 ## Client

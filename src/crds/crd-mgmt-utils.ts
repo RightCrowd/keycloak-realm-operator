@@ -7,7 +7,7 @@ import { Buffer } from "node:buffer";
 import { encodeHex } from "jsr:@std/encoding/hex";
 import { k8sApiMC } from "../k8s.ts";
 import { z } from "npm:zod";
-import { k8sApiPods } from "../k8s.ts";
+// import { k8sApiPods } from "../k8s.ts";
 import { CoreV1Event } from "npm:@kubernetes/client-node";
 import { getConfig } from "../config.ts";
 
@@ -264,23 +264,26 @@ function getRandomString(s: number) {
   return ret;
 }
 
+// deno-lint-ignore require-await
 export const logCrEvent = async (
   selector: CrSelectorWithUid,
   event: Event,
 ) => {
   const date = new Date(new Date().setMilliseconds(0));
 
+  const namePrefix = [
+    selector.group,
+    selector.plural,
+    selector.name,
+    selector.namespace,
+  ].filter(Boolean).join("-");
+
+  // deno-lint-ignore no-unused-vars
   const e: CoreV1Event = {
     apiVersion: "v1",
     kind: "Event",
     metadata: {
-      name: [
-        selector.group,
-        selector.plural,
-        selector.name,
-        selector.namespace,
-        getRandomString(10)
-      ].filter(Boolean).join("-"),
+      name: `${namePrefix}-${getRandomString(10)}`,
       namespace: getConfig().OPERATOR_NAMESPACE,
     },
     involvedObject: {
@@ -301,5 +304,26 @@ export const logCrEvent = async (
     count: 1,
   };
 
-  await k8sApiPods.createNamespacedEvent(getConfig().OPERATOR_NAMESPACE, e);
+  // ⬇️ Disabling the creation of events for now as cleanup isn't implemented yet.
+
+  // const oldEvents = (await k8sApiPods.listNamespacedEvent(getConfig().OPERATOR_NAMESPACE)).body.items.filter(e => e.metadata.name?.startsWith(namePrefix))
+
+  // const { involvedObject, type, reason, message, source } = e
+  // const newEventComparisonData = { involvedObject, type, reason, message, source }
+  // const newEventComparisonJSON = JSON.stringify(newEventComparisonData)
+
+  // const matchingOldEvent = oldEvents.find(oldEvent => {
+  //   const { involvedObject, type, reason, message, source } = oldEvent
+  //   const oldEventData = {involvedObject, type, reason, message, source}
+  //   return JSON.stringify(oldEventData) === newEventComparisonJSON
+  // })
+
+  // if (matchingOldEvent != null) {
+  //   await k8sApiPods.patchNamespacedEvent(matchingOldEvent.metadata.name!, getConfig().OPERATOR_NAMESPACE, {
+  //     lastTimestamp: date,
+  //   })
+  //   return
+  // }
+
+  // await k8sApiPods.createNamespacedEvent(getConfig().OPERATOR_NAMESPACE, e);
 };

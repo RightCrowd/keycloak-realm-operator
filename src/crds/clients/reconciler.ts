@@ -76,14 +76,13 @@ export const reconcileResource = async (
     await kcClient.ensureAuthed();
     const _client = await kcClient.client.clients.findOne({
       realm,
-      id
+      id,
     });
     const _clients = await kcClient.client.clients.find({
       realm,
       // id,
     });
-    let currentKcClient = _clients.find(c => c.clientId === id)
-    debugger;
+    let currentKcClient = _clients.find((c) => c.clientId === id);
 
     if (currentKcClient == null) {
       // The client does not exist yet. Let's create it
@@ -263,7 +262,9 @@ export const cleanup = async () => {
       if (r.clientId == null) {
         throw new Error(`clientId not defined`);
       }
-      return !crManagedClients.some((cr) =>  cr.clientId === r.clientId && cr.realm === realm);
+      return !crManagedClients.some((cr) =>
+        cr.clientId === r.clientId && cr.realm === realm
+      );
     });
 
     for (const clientRepresentation of lingeringClients) {
