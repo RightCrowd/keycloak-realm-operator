@@ -47,6 +47,7 @@ export const zCustomResourceIn = z.object({
   apiVersion: z.string(),
   kind: z.string(),
   metadata: z.object({
+    uid: z.string(),
     name: z.string(),
     annotations: z.record(z.string(), z.string()).optional(),
   }).passthrough(),

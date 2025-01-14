@@ -242,19 +242,29 @@ export const updateCr = async <Schema extends CrUpdates = CrUpdates>(
 };
 
 type Event = {
-  type?: 'Normal' | 'Warning',
-  message: string
-  reason?: string
-}
+  type?: "Normal" | "Warning";
+  message: string;
+  reason?: string;
+};
 
-export const logCrEvent = async (selector: CrSelector, event: Event) => {
-  const date = new Date()
+export const logCrEvent = async (
+  selector: CrSelector,
+  uid: string,
+  event: Event,
+) => {
+  const date = new Date(new Date().setMilliseconds(0));
 
   const e: CoreV1Event = {
     apiVersion: "v1",
     kind: "Event",
     metadata: {
-      name: [selector.group, selector.plural, selector.name, selector.namespace, date.getTime()].filter(Boolean).join('-'),
+      name: [
+        selector.group,
+        selector.plural,
+        selector.name,
+        selector.namespace,
+        date.getTime(),
+      ].filter(Boolean).join("-"),
       namespace: getConfig().OPERATOR_NAMESPACE,
     },
     involvedObject: {
@@ -262,15 +272,18 @@ export const logCrEvent = async (selector: CrSelector, event: Event) => {
       kind: selector.kind,
       name: selector.name,
       namespace: selector.namespace,
+      uid,
     },
-    type: event.type ?? 'Normal',
+    type: event.type ?? "Normal",
     reason: event.reason,
     message: event.message,
     source: {
       component: "keycloak-realm-operator",
     },
-    eventTime: date,
+    lastTimestamp: date,
+    firstTimestamp: date,
+    count: 1,
   };
 
-  await k8sApiPods.createNamespacedEvent(selector.namespace!, e)
-}
+  await k8sApiPods.createNamespacedEvent(getConfig().OPERATOR_NAMESPACE, e);
+};

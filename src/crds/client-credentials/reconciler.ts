@@ -12,7 +12,7 @@ import { V1Secret } from "npm:@kubernetes/client-node";
 import { type ClientRepresentation, KeycloakClient } from "../../keycloak.ts";
 import { Logger } from "../../util.ts";
 import { parse } from "npm:@ctrl/golang-template";
-import { type CrSelector } from "../crd-mgmt-utils.ts";
+import { type CrSelector, logCrEvent } from "../crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
 
 const logger = new Logger("client-credentials reconciler");
@@ -80,6 +80,12 @@ export const reconcileResource = async (
     } catch (_err) {
       console.error(_err);
       // Client does not exist
+      await logCrEvent(selector, apiObj.metadata.uid, {
+        message:
+          `Client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} is not found`,
+        type: "Warning",
+        reason: "Failed",
+      });
     }
     return targettedKcClient;
   };
@@ -106,6 +112,12 @@ export const reconcileResource = async (
 
     if (clientId == null || clientSecret == null) {
       await updateCr(selector, { status: { state: "failed" } });
+      await logCrEvent(selector, apiObj.metadata.uid, {
+        message:
+          `KC client ${apiObj.spec.clientId} in realm ${apiObj.spec.realm} does not posess id or secret, or client does not exist`,
+        type: "Warning",
+        reason: "Failed",
+      });
       if (apiObj.spec.fallbackStrategy === "skip") {
         logger.log(
           `Keycloak credentials not found for ${apiObj.metadata.name} in namespace ${apiObj.metadata.namespace}. FallbackStrategy is 'skip', so skipping.`,
@@ -117,6 +129,11 @@ export const reconcileResource = async (
       );
     }
 
+    await logCrEvent(selector, apiObj.metadata.uid, {
+      message:
+        `Updating secret ${apiObj.spec.targetSecretName} in namespace ${apiObj.metadata.namespace}`,
+      reason: "Syncing",
+    });
     await k8sApiPods.replaceNamespacedSecret(
       apiObj.spec.targetSecretName,
       apiObj.metadata.namespace,
@@ -158,6 +175,11 @@ export const reconcileResource = async (
     );
   }
 
+  await logCrEvent(selector, apiObj.metadata.uid, {
+    message:
+      `Creating secret ${apiObj.spec.targetSecretName} in namespace ${apiObj.metadata.namespace}`,
+    reason: "Syncing",
+  });
   await k8sApiPods.createNamespacedSecret(apiObj.metadata.namespace, {
     apiVersion: "v1",
     kind: "Secret",
