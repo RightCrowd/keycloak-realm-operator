@@ -64,19 +64,35 @@ type GenericKcInRealmResourceCrSpecsBase<
     version: string;
     kind: string;
   };
-  defaultAttributes?: Record<string, string | boolean>
+  defaultAttributes?: Record<string, string | boolean>;
   validationSchemas: {
     customResourceIn: ZodSchema;
     customResourceOut: ZodSchema;
   };
   idMappers: {
-  /** Mapper generating lookup paramaters to find the resource in Keycloak based on the CR spec */
-  find: (crSpec: any) => Partial<NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>[SubRes]['findOne']>>>>;
-  /** Mapper generating creation paramaters for the resource in Keycloak based on the CR spec */
-  create: (crSpec: any) => Partial<NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>[SubRes]['findOne']>>>>
-  /** Mapper generating a human readable identifier based on the CR spec */
-  humanReadable: (crSpec: any) => string;
-  }
+    /** Mapper generating lookup paramaters to find the resource in Keycloak based on the CR spec */
+    find: (
+      crSpec: any,
+    ) => Partial<
+      NonNullable<
+        Awaited<
+          ReturnType<InstanceType<typeof KcAdminClient>[SubRes]["findOne"]>
+        >
+      >
+    >;
+    /** Mapper generating creation paramaters for the resource in Keycloak based on the CR spec */
+    create: (
+      crSpec: any,
+    ) => Partial<
+      NonNullable<
+        Awaited<
+          ReturnType<InstanceType<typeof KcAdminClient>[SubRes]["findOne"]>
+        >
+      >
+    >;
+    /** Mapper generating a human readable identifier based on the CR spec */
+    humanReadable: (crSpec: any) => string;
+  };
 };
 
 type GenericKcInRealmResourceCrSpecs<
@@ -133,14 +149,13 @@ export class kcInRealmResourceCr<
       `${options.crdIdentifiers.plural} reconciliation queue`,
     );
     this.cleanupQueueLogger = new Logger(
-        `${options.crdIdentifiers.plural} cleanup queue`,
-      );
+      `${options.crdIdentifiers.plural} cleanup queue`,
+    );
 
     this.kcClient = new KeycloakClient();
     this.updateCr = updateCrGeneric<
       z.input<T["validationSchemas"]["customResourceOut"]>
     >;
-
 
     this.reconciliationJobName =
       `${this.options.crdIdentifiers.plural}-reconciliation`;
@@ -203,9 +218,7 @@ export class kcInRealmResourceCr<
       },
     );
 
-
-    this.cleanupJobName =
-    `${this.options.crdIdentifiers.plural}-cleanup`;
+    this.cleanupJobName = `${this.options.crdIdentifiers.plural}-cleanup`;
     this.cleanupJobQueueName = `${this.cleanupJobName}-queue`;
 
     this.cleanupQueue = new Queue<
@@ -226,14 +239,16 @@ export class kcInRealmResourceCr<
       unknown,
       string
     >(
-    this.cleanupJobQueueName,
+      this.cleanupJobQueueName,
       async (_job) => {
         try {
           this.cleanupQueueLogger.log(
             `Performing scheduled ${this.options.crdIdentifiers.plural} cleanup`,
           );
           await this.cleanupResources();
-          this.cleanupQueueLogger.log(`Finished scheduled ${this.options.crdIdentifiers.plural} cleanup`);
+          this.cleanupQueueLogger.log(
+            `Finished scheduled ${this.options.crdIdentifiers.plural} cleanup`,
+          );
         } catch (error) {
           console.error(error);
           throw error;
@@ -249,7 +264,7 @@ export class kcInRealmResourceCr<
         concurrency: 1,
         autorun: getConfig().ENABLE_WORKERS,
       },
-    )
+    );
   }
 
   makeSelector = (name: string): CrSelector => {
@@ -257,7 +272,7 @@ export class kcInRealmResourceCr<
       ...this.options.crdIdentifiers,
       name,
     };
-  }
+  };
 
   isClaimed = (
     subResource: NonNullable<
@@ -282,14 +297,17 @@ export class kcInRealmResourceCr<
     const create = this.options.idMappers.create(spec);
     const find = this.options.idMappers.find(spec);
     const humanReadaleId = this.options.idMappers.humanReadable(spec);
-    const findFilterFn = (resources: any) => !Object.keys(find).some(key => !((resources as any)[key] === (find as any)[key]))
+    const findFilterFn = (resources: any) =>
+      !Object.keys(find).some((key) =>
+        !((resources as any)[key] === (find as any)[key])
+      );
     return {
       create,
       find,
       humanReadaleId,
-      findFilterFn
-    }
-  }
+      findFilterFn,
+    };
+  };
 
   reconcileResource = async (
     apiObj: z.output<T["validationSchemas"]["customResourceIn"]>,
@@ -305,7 +323,7 @@ export class kcInRealmResourceCr<
       const { spec } = apiObj;
       const { realm } = spec;
 
-      const mappers = this.getMappers(spec)
+      const mappers = this.getMappers(spec);
 
       // Make sure the realm exists
       await this.kcClient.ensureAuthed();
@@ -316,8 +334,8 @@ export class kcInRealmResourceCr<
       }
 
       await this.kcClient.ensureAuthed();
-      const allSubresources = await subResourceClient.find({ realm })
-      let currentKcSubresource = allSubresources.find(mappers.findFilterFn)
+      const allSubresources = await subResourceClient.find({ realm });
+      let currentKcSubresource = allSubresources.find(mappers.findFilterFn);
       let id = currentKcSubresource?.id;
 
       if (currentKcSubresource == null) {
@@ -342,7 +360,7 @@ export class kcInRealmResourceCr<
         }))!;
       }
 
-      id = id!
+      id = id!;
 
       let claimed = this.isClaimed(currentKcSubresource);
       if (!claimed) {
@@ -396,7 +414,7 @@ export class kcInRealmResourceCr<
       });
       await this.updateCr(selector, { status: { state: "failed" } });
     }
-  }
+  };
 
   reconcileAllResources = async () => {
     const crs = ((await k8sApiMC.listClusterCustomObject(
@@ -417,7 +435,7 @@ export class kcInRealmResourceCr<
         selector,
       );
     }
-  }
+  };
 
   cleanupResources = async () => {
     const crs = (await k8sApiMC.listClusterCustomObject(
@@ -519,7 +537,7 @@ export class kcInRealmResourceCr<
         });
       }
     }
-  }
+  };
 
   onEventHandler = async (
     _phase: string,
@@ -556,7 +574,7 @@ export class kcInRealmResourceCr<
     if (phase === "DELETED") {
       await this.scheduleCleanupJobNow();
     }
-  }
+  };
 
   startWatching = async () => {
     /* Watch client credentials custom resource */
@@ -570,7 +588,7 @@ export class kcInRealmResourceCr<
         await this.startWatching();
       },
     );
-  }
+  };
 
   scheduleReconciliationJobs = async () => {
     await this.reconciliationQueue.upsertJobScheduler(
@@ -586,11 +604,11 @@ export class kcInRealmResourceCr<
         },
       },
     );
-  }
+  };
 
   scheduleReconciliationJobNow = async () => {
     await this.reconciliationQueue.promoteJobs();
-  }
+  };
 
   addReconciliationJob = async (data: ReconcilerJobData<T>) => {
     await this.reconciliationQueue.add(
@@ -601,7 +619,7 @@ export class kcInRealmResourceCr<
         priority: 10,
       },
     );
-  }
+  };
 
   scheduleCleanupJobs = async () => {
     await this.cleanupQueue.upsertJobScheduler(

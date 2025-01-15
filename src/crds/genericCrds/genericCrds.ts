@@ -16,26 +16,25 @@ const clientScopesCr = new kcInRealmResourceCr({
     kind: "KeycloakClientScope",
   },
   kcClientSubresource: "clientScopes",
-  defaultAttributes: 
-    {
-      "display.on.consent.screen": "true",
-      "consent.screen.text": "",
-      "include.in.token.scope": false,
-      "gui.order": ""
-    },
+  defaultAttributes: {
+    "display.on.consent.screen": "true",
+    "consent.screen.text": "",
+    "include.in.token.scope": false,
+    "gui.order": "",
+  },
   validationSchemas: {
     customResourceIn: makeZCustomResourceSchema(crdSpecificSpecs),
     customResourceOut: makeZCustomResourceSchema(crdSpecificSpecs),
   },
   idMappers: {
     find: (spec: z.infer<typeof crdSpecificSpecs>) => ({
-      name: spec.id
+      name: spec.id,
     }),
     create: (spec: z.infer<typeof crdSpecificSpecs>) => ({
-      name: spec.id
+      name: spec.id,
     }),
-    humanReadable: (spec: z.infer<typeof crdSpecificSpecs>) => spec.id
-  }
+    humanReadable: (spec: z.infer<typeof crdSpecificSpecs>) => spec.id,
+  },
 });
 
 const groupsCr = new kcInRealmResourceCr({
@@ -52,16 +51,16 @@ const groupsCr = new kcInRealmResourceCr({
   },
   idMappers: {
     find: (spec: z.infer<typeof crdSpecificSpecs>) => ({
-      name: spec.id
+      name: spec.id,
     }),
     create: (spec: z.infer<typeof crdSpecificSpecs>) => ({
-      name: spec.id
+      name: spec.id,
     }),
-    humanReadable: (spec: z.infer<typeof crdSpecificSpecs>) => spec.id
-  }
+    humanReadable: (spec: z.infer<typeof crdSpecificSpecs>) => spec.id,
+  },
 });
 
 export const genericCrds = [
   clientScopesCr,
-  groupsCr
-]
+  groupsCr,
+];
