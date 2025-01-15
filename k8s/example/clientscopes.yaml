@@ -1,0 +1,56 @@
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: KeycloakClientScope
+metadata:
+  name: funny-client-scope
+spec:
+  realm: funny
+  id: test-scope
+  prune: true
+  claim: true
+  representation:
+    description: lalala
+    protocol: openid-connect
+---
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: KeycloakClientScope
+metadata:
+  name: roles
+spec:
+  realm: funny
+  id: roles
+  prune: true
+  claim: true
+  recreateOnClaim: true
+  representation:
+    description: OpenID Connect scope for add user roles to the access token
+    protocol: openid-connect
+    protocolMappers:
+    - name: realm roles
+      protocol: openid-connect
+      protocolMapper: oidc-usermodel-realm-role-mapper
+      consentRequired: false
+      config:
+        multivalued: 'true'
+        userinfo.token.claim: 'false'
+        user.attribute: foo
+        id.token.claim: 'true'
+        access.token.claim: 'true'
+        claim.name: roles
+        jsonType.label: String
+    - name: client roles
+      protocol: openid-connect
+      protocolMapper: oidc-usermodel-client-role-mapper
+      consentRequired: false
+      config:
+        multivalued: 'true'
+        userinfo.token.claim: 'false'
+        user.attribute: foo
+        id.token.claim: 'true'
+        access.token.claim: 'true'
+        claim.name: roles
+        jsonType.label: String
+    - name: audience resolve
+      protocol: openid-connect
+      protocolMapper: oidc-audience-resolve-mapper
+      consentRequired: false
+      config: {}
