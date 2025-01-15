@@ -4,10 +4,10 @@ metadata:
   name: funny-client-scope
 spec:
   realm: funny
-  id: testgroup
+  id: test-scope
   prune: true
   claim: true
   representation:
     description: OpenID Connect scope for add user roles to the access token
     protocol: openid-connect
-    type: default
+    # type: default

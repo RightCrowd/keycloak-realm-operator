@@ -347,6 +347,7 @@ export class kcInRealmResourceCr<
         id = (await subResourceClient.create({
           realm,
           ...mappers.create,
+          ...spec.representation,
           attributes: {
             ...this.options.defaultAttributes,
             ...claimAttribute,
@@ -391,6 +392,7 @@ export class kcInRealmResourceCr<
       }
 
       const attributes = {
+        ...this.options.defaultAttributes,
         ...currentKcSubresource.attributes,
         ...claimAttribute,
         [crSpecRealmAttributeKey]: JSON.stringify(spec),
@@ -403,7 +405,6 @@ export class kcInRealmResourceCr<
       await subResourceClient.update({ realm, id }, {
         ...spec.representation,
         attributes,
-        id: undefined,
       });
 
       await this.updateCr(selector, { status: { state: "synced" } });
