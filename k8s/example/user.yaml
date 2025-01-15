@@ -5,6 +5,7 @@ metadata:
 spec:
   realm: funny
   email: "my-email@funny.com"
+  username: "my-email@funny.com"
   firstName: Evert
   lastName: De Spiegeleer
   prune: true

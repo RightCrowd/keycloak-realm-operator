@@ -67,10 +67,10 @@ const groupsCr = new kcInRealmResourceCr({
 });
 
 const userCrdSpecificSpecs = z.object({
-  email: z.string().email(),
+  email: z.string().email().optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  username: z.string().optional(),
+  username: z.string(),
 });
 
 const usersCr = new kcInRealmResourceCr({
@@ -87,7 +87,7 @@ const usersCr = new kcInRealmResourceCr({
   },
   idMappers: {
     find: (spec: z.infer<typeof userCrdSpecificSpecs>) => ({
-      email: spec.email,
+      username: spec.username,
     }),
     create: (spec: z.infer<typeof userCrdSpecificSpecs>) => ({
       email: spec.email,
@@ -101,7 +101,8 @@ const usersCr = new kcInRealmResourceCr({
       lastName: spec.lastName,
       username: spec.username,
     }),
-    humanReadable: (spec: z.infer<typeof userCrdSpecificSpecs>) => spec.email,
+    humanReadable: (spec: z.infer<typeof userCrdSpecificSpecs>) =>
+      spec.username,
   },
 });
 
