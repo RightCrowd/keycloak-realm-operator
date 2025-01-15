@@ -51,7 +51,7 @@ type KcSubResource = keyof InstanceType<typeof KcAdminClient>;
 const allowedSubresources = [
   "clientScopes",
   "groups",
-  "users"
+  "users",
 ] as const satisfies KcSubResource[];
 
 type GenericKcInRealmResourceCrSpecsBase<

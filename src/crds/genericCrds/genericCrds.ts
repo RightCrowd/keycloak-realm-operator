@@ -70,8 +70,8 @@ const userCrdSpecificSpecs = z.object({
   email: z.string().email(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
-  username: z.string().optional()
-})
+  username: z.string().optional(),
+});
 
 const usersCr = new kcInRealmResourceCr({
   crdIdentifiers: {
@@ -108,5 +108,5 @@ const usersCr = new kcInRealmResourceCr({
 export const genericCrds = [
   clientScopesCr,
   groupsCr,
-  usersCr
+  usersCr,
 ];
