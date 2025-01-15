@@ -10,6 +10,9 @@ While there is a little bit of overlap with the [Keycloak Operator](https://www.
 - [x] Create and actively manage Keycloak realms from Kubernetes CRs (Implemented ✅)
 - [x] Create and actively manage Keycloak clients from Kubernetes CRs (Implemented ✅)
 - [x] Realm import which runs every reconciliation in order to cover for management of resources in Keycloak that are not yet supported by the operator. (Implemented ✅)
+- [ ] Management of client scopes (Partly implemented, not documented ⏳)
+- [ ] Management of users (Partly implemented, not documented ⏳)
+- [ ] Management of groups (Partly implemented, not working, not documented ⏳)
 
 # Installation with Helm
 ```sh
