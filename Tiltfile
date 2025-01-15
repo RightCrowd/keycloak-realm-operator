@@ -30,4 +30,6 @@ k8s_yaml('k8s/example/client-credential.yaml')
 
 k8s_yaml('k8s/example/clientscopes.yaml')
 
+k8s_yaml('k8s/example/user.yaml')
+
 k8s_resource('keycloak-realm-operator-deployment', port_forwards=[12345])

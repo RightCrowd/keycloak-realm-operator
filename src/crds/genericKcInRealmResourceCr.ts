@@ -49,9 +49,9 @@ export const makeZCustomResourceSchema = <
 
 type KcSubResource = keyof InstanceType<typeof KcAdminClient>;
 const allowedSubresources = [
-  "clients",
   "clientScopes",
   "groups",
+  "users"
 ] as const satisfies KcSubResource[];
 
 type GenericKcInRealmResourceCrSpecsBase<

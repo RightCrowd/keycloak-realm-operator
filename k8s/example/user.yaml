@@ -1,0 +1,13 @@
+apiVersion: k8s.rightcrowd.com/v1alpha1
+kind: KeycloakUser
+metadata:
+  name: evert
+spec:
+  realm: funny
+  email: "my-email@funny.com"
+  firstName: Evert
+  lastName: De Spiegeleer
+  prune: true
+  claim: true
+  representation:
+    enabled: true
