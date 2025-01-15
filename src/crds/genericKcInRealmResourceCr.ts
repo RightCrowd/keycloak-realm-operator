@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import KcAdminClient from "npm:@keycloak/keycloak-admin-client";
 import z, { AnyZodObject } from "npm:zod";
 import { ZodSchema } from "npm:zod";
@@ -36,8 +37,8 @@ export const makeZCustomResourceSchema = <
       annotations: z.record(z.string(), z.string()).optional(),
     }).passthrough(),
     spec: spec.extend({
-      prune: z.boolean().optional(),
-      claim: z.boolean().optional(),
+      prune: z.boolean().optional().default(true),
+      claim: z.boolean().optional().default(true),
       realm: z.string(),
       //   id: z.string(),
       representation: z.any(),
@@ -63,12 +64,19 @@ type GenericKcInRealmResourceCrSpecsBase<
     version: string;
     kind: string;
   };
+  defaultAttributes?: Record<string, string | boolean>
   validationSchemas: {
     customResourceIn: ZodSchema;
     customResourceOut: ZodSchema;
   };
-  //   findIdMapper: (crSpec: unknown) => Partial<Awaited<ReturnType<InstanceType<typeof KcAdminClient>[SubRes]['findOne']>>>;
-  //   createIdMapper: (crSpec: unknown) => Partial<Awaited<ReturnType<InstanceType<typeof KcAdminClient>[SubRes]['findOne']>>>
+  idMappers: {
+  /** Mapper generating lookup paramaters to find the resource in Keycloak based on the CR spec */
+  find: (crSpec: any) => Partial<NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>[SubRes]['findOne']>>>>;
+  /** Mapper generating creation paramaters for the resource in Keycloak based on the CR spec */
+  create: (crSpec: any) => Partial<NonNullable<Awaited<ReturnType<InstanceType<typeof KcAdminClient>[SubRes]['findOne']>>>>
+  /** Mapper generating a human readable identifier based on the CR spec */
+  humanReadable: (crSpec: any) => string;
+  }
 };
 
 type GenericKcInRealmResourceCrSpecs<
@@ -244,7 +252,7 @@ export class kcInRealmResourceCr<
     )
   }
 
-  makeSelector(name: string): CrSelector {
+  makeSelector = (name: string): CrSelector => {
     return {
       ...this.options.crdIdentifiers,
       name,
@@ -270,10 +278,23 @@ export class kcInRealmResourceCr<
     return !differ;
   };
 
-  async reconcileResource(
+  getMappers = (spec: any) => {
+    const create = this.options.idMappers.create(spec);
+    const find = this.options.idMappers.find(spec);
+    const humanReadaleId = this.options.idMappers.humanReadable(spec);
+    const findFilterFn = (resources: any) => !Object.keys(find).some(key => !((resources as any)[key] === (find as any)[key]))
+    return {
+      create,
+      find,
+      humanReadaleId,
+      findFilterFn
+    }
+  }
+
+  reconcileResource = async (
     apiObj: z.output<T["validationSchemas"]["customResourceIn"]>,
     selector: CrSelector,
-  ) {
+  ) => {
     this.reconcilerLogger.log(`Reconciling CR`, apiObj);
     await this.updateCr(selector, { status: { state: "syncing" } });
 
@@ -282,7 +303,9 @@ export class kcInRealmResourceCr<
 
     try {
       const { spec } = apiObj;
-      const { realm, id } = spec;
+      const { realm } = spec;
+
+      const mappers = this.getMappers(spec)
 
       // Make sure the realm exists
       await this.kcClient.ensureAuthed();
@@ -293,26 +316,25 @@ export class kcInRealmResourceCr<
       }
 
       await this.kcClient.ensureAuthed();
-      let currentKcSubresource = await subResourceClient.findOne({
-        realm,
-        id,
-      });
+      const allSubresources = await subResourceClient.find({ realm })
+      let currentKcSubresource = allSubresources.find(mappers.findFilterFn)
+      let id = currentKcSubresource?.id;
 
       if (currentKcSubresource == null) {
         // The resource does not exist yet. Let's create it
         this.reconcilerLogger.log(
-          `Creating and claiming Keycloak ${subResourceName} ${id} in realm ${realm}`,
+          `Creating and claiming Keycloak ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
         );
         await this.kcClient.ensureAuthed();
-        await subResourceClient.create({
+        id = (await subResourceClient.create({
           realm,
-          id,
-          name: spec.name,
+          ...mappers.create,
           attributes: {
+            ...this.options.defaultAttributes,
             ...claimAttribute,
             [crSpecRealmAttributeKey]: JSON.stringify(spec),
           },
-        });
+        })).id;
         await this.kcClient.ensureAuthed();
         currentKcSubresource = (await subResourceClient.findOne({
           realm,
@@ -320,14 +342,16 @@ export class kcInRealmResourceCr<
         }))!;
       }
 
+      id = id!
+
       let claimed = this.isClaimed(currentKcSubresource);
       if (!claimed) {
         this.reconcilerLogger.log(
-          `${subResourceName} ${id} is unclaimed in realm ${realm}`,
+          `${subResourceName} ${mappers.humanReadaleId} is unclaimed in realm ${realm}`,
         );
         if (spec.claim) {
           this.reconcilerLogger.log(
-            `Claiming ${subResourceName} ${id} in realm ${realm}`,
+            `Claiming ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
           );
           await this.kcClient.ensureAuthed();
           await subResourceClient.update({ realm, id }, {
@@ -342,7 +366,7 @@ export class kcInRealmResourceCr<
 
       if (!claimed) {
         this.reconcilerLogger.error(
-          `${subResourceName} ${id} in realm ${realm} is not claimed and claiming is disabled`,
+          `${subResourceName} ${mappers.humanReadaleId} in realm ${realm} is not claimed and claiming is disabled`,
         );
         await this.updateCr(selector, { status: { state: "failed" } });
         return;
@@ -356,7 +380,7 @@ export class kcInRealmResourceCr<
 
       await this.kcClient.ensureAuthed();
       this.reconcilerLogger.log(
-        `Performing update for ${subResourceName} ${id} in realm ${realm}`,
+        `Performing update for ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
       );
       await subResourceClient.update({ realm, id }, {
         ...spec.representation,
@@ -374,7 +398,7 @@ export class kcInRealmResourceCr<
     }
   }
 
-  async reconcileAllResources() {
+  reconcileAllResources = async () => {
     const crs = ((await k8sApiMC.listClusterCustomObject(
       this.options.crdIdentifiers.group,
       this.options.crdIdentifiers.version,
@@ -395,7 +419,7 @@ export class kcInRealmResourceCr<
     }
   }
 
-  async cleanupResources() {
+  cleanupResources = async () => {
     const crs = (await k8sApiMC.listClusterCustomObject(
       this.options.crdIdentifiers.group,
       this.options.crdIdentifiers.version,
@@ -447,7 +471,6 @@ export class kcInRealmResourceCr<
             ((this.options.validationSchemas.customResourceIn as AnyZodObject)
               .pick({ spec: true }).parse({
                 spec: JSON.parse(specAttributeValue),
-                // deno-lint-ignore no-explicit-any
               }) as { spec: any }).spec;
         } catch (error) {
           this.cleanupLogger.error(
@@ -498,10 +521,10 @@ export class kcInRealmResourceCr<
     }
   }
 
-  async onEventHandler(
+  onEventHandler = async (
     _phase: string,
     apiObj: object,
-  ) {
+  ) => {
     const phase = _phase as "ADDED" | "MODIFIED" | "DELETED";
     const parsedApiObj = this.options.validationSchemas.customResourceIn.parse(
       apiObj,
@@ -535,21 +558,21 @@ export class kcInRealmResourceCr<
     }
   }
 
-  async startWatching() {
+  startWatching = async () => {
     /* Watch client credentials custom resource */
     await watcher.watch(
       `/apis/${this.options.crdIdentifiers.group}/${this.options.crdIdentifiers.version}/${this.options.crdIdentifiers.plural}`,
       {},
       this.onEventHandler,
       async (err) => {
-        this.crdHandlerLogger.log("Connection closed", err);
+        this.crdHandlerLogger.error("Connection closed", err);
         this.crdHandlerLogger.info("Restarting watcher");
         await this.startWatching();
       },
     );
   }
 
-  async scheduleReconciliationJobs() {
+  scheduleReconciliationJobs = async () => {
     await this.reconciliationQueue.upsertJobScheduler(
       this.reconciliationJobName,
       { pattern: "* * * * *" },
@@ -565,11 +588,11 @@ export class kcInRealmResourceCr<
     );
   }
 
-  async scheduleReconciliationJobNow() {
+  scheduleReconciliationJobNow = async () => {
     await this.reconciliationQueue.promoteJobs();
   }
 
-  async addReconciliationJob(data: ReconcilerJobData<T>) {
+  addReconciliationJob = async (data: ReconcilerJobData<T>) => {
     await this.reconciliationQueue.add(
       this.reconciliationJobName,
       data,
@@ -580,7 +603,7 @@ export class kcInRealmResourceCr<
     );
   }
 
-  async scheduleCleanupJobs () {
+  scheduleCleanupJobs = async () => {
     await this.cleanupQueue.upsertJobScheduler(
       this.cleanupJobName,
       { pattern: "* * * * *" },
@@ -594,7 +617,7 @@ export class kcInRealmResourceCr<
     );
   };
 
-  async scheduleCleanupJobNow () {
+  scheduleCleanupJobNow = async () => {
     this.cleanupQueueLogger.log("Promoting cleanup job");
     await this.cleanupQueue.promoteJobs();
   };
