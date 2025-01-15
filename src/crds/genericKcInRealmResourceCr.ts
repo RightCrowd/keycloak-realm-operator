@@ -39,6 +39,7 @@ export const makeZCustomResourceSchema = <
     spec: spec.extend({
       prune: z.boolean().optional().default(true),
       claim: z.boolean().optional().default(true),
+      recreateOnClaim: z.boolean().optional().default(false),
       realm: z.string(),
       //   id: z.string(),
       representation: z.any(),
@@ -82,6 +83,16 @@ type GenericKcInRealmResourceCrSpecsBase<
     >;
     /** Mapper generating creation paramaters for the resource in Keycloak based on the CR spec */
     create: (
+      crSpec: any,
+    ) => Partial<
+      NonNullable<
+        Awaited<
+          ReturnType<InstanceType<typeof KcAdminClient>[SubRes]["findOne"]>
+        >
+      >
+    >;
+    /** Mapper generating update paramaters for the resource in Keycloak based on the CR spec */
+    update: (
       crSpec: any,
     ) => Partial<
       NonNullable<
@@ -295,6 +306,7 @@ export class kcInRealmResourceCr<
 
   getMappers = (spec: any) => {
     const create = this.options.idMappers.create(spec);
+    const update = this.options.idMappers.update(spec);
     const find = this.options.idMappers.find(spec);
     const humanReadaleId = this.options.idMappers.humanReadable(spec);
     const findFilterFn = (resources: any) =>
@@ -303,6 +315,7 @@ export class kcInRealmResourceCr<
       );
     return {
       create,
+      update,
       find,
       humanReadaleId,
       findFilterFn,
@@ -333,6 +346,7 @@ export class kcInRealmResourceCr<
         return;
       }
 
+      this.kcClient.client.clientScopes.findProtocolMapper;
       await this.kcClient.ensureAuthed();
       const allSubresources = await subResourceClient.find({ realm });
       let currentKcSubresource = allSubresources.find(mappers.findFilterFn);
@@ -369,17 +383,37 @@ export class kcInRealmResourceCr<
           `${subResourceName} ${mappers.humanReadaleId} is unclaimed in realm ${realm}`,
         );
         if (spec.claim) {
-          this.reconcilerLogger.log(
-            `Claiming ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
-          );
-          await this.kcClient.ensureAuthed();
-          await subResourceClient.update({ realm, id }, {
-            attributes: {
-              ...currentKcSubresource.attributes,
-              ...claimAttribute,
-            },
-          });
-          claimed = true;
+          if (spec.recreateOnClaim) {
+            this.reconcilerLogger.log(
+              `Recreating and claiming ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
+            );
+            await this.kcClient.ensureAuthed();
+            await subResourceClient.del({ realm, id });
+            id = (await subResourceClient.create({
+              realm,
+              ...mappers.create,
+              ...spec.representation,
+              attributes: {
+                ...this.options.defaultAttributes,
+                ...claimAttribute,
+                [crSpecRealmAttributeKey]: JSON.stringify(spec),
+              },
+            })).id;
+            claimed = true;
+          } else {
+            this.reconcilerLogger.log(
+              `Claiming ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
+            );
+            await this.kcClient.ensureAuthed();
+            await subResourceClient.update({ realm, id }, {
+              ...mappers.update,
+              attributes: {
+                ...currentKcSubresource.attributes,
+                ...claimAttribute,
+              },
+            });
+            claimed = true;
+          }
         }
       }
 
@@ -403,6 +437,7 @@ export class kcInRealmResourceCr<
         `Performing update for ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
       );
       await subResourceClient.update({ realm, id }, {
+        ...mappers.update,
         ...spec.representation,
         attributes,
       });

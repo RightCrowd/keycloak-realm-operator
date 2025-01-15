@@ -33,6 +33,9 @@ const clientScopesCr = new kcInRealmResourceCr({
     create: (spec: z.infer<typeof crdSpecificSpecs>) => ({
       name: spec.id,
     }),
+    update: (spec: z.infer<typeof crdSpecificSpecs>) => ({
+      name: spec.id,
+    }),
     humanReadable: (spec: z.infer<typeof crdSpecificSpecs>) => spec.id,
   },
 });
@@ -54,6 +57,9 @@ const groupsCr = new kcInRealmResourceCr({
       name: spec.id,
     }),
     create: (spec: z.infer<typeof crdSpecificSpecs>) => ({
+      name: spec.id,
+    }),
+    update: (spec: z.infer<typeof crdSpecificSpecs>) => ({
       name: spec.id,
     }),
     humanReadable: (spec: z.infer<typeof crdSpecificSpecs>) => spec.id,
