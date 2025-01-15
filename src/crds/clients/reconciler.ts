@@ -217,9 +217,9 @@ export const cleanup = async () => {
       if (r.clientId == null) {
         throw new Error(`clientId not defined`);
       }
-      return crManagedClients.some((cr) => {
-        return !(cr.clientId === r.clientId && cr.realm === realm);
-      });
+      return !crManagedClients.some((cr) =>
+        cr.clientId === r.clientId && cr.realm === realm
+      );
     });
 
     for (const clientRepresentation of lingeringClients) {
