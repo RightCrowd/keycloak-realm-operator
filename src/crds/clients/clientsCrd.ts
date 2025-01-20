@@ -24,15 +24,15 @@ class kcInRealmClientCr<
     apiObj: z.output<T["validationSchemas"]["customResourceIn"]>,
     selector: CrSelector,
   ) => {
-    this.reconcilerLogger.log(
-      `Reconciling CR`,
-      selector,
-    );
+    this.reconcilerLogger.log(`Reconciling CR`, apiObj);
     await this.updateCr(selector, { status: { state: "syncing" } });
 
+    const subResourceName = this.options.kcClientSubresource;
+    const subResourceClient = this.kcClient.client[subResourceName];
+
     try {
-      const { spec } = apiObj;
-      const { realmId: realm, clientId: id } = spec;
+      const spec = apiObj.spec as z.infer<typeof clientCrdSpecificSpecs>;
+      const { realm } = spec;
 
       const mappers = this.getMappers(spec);
 
@@ -45,48 +45,48 @@ class kcInRealmClientCr<
       }
 
       await this.kcClient.ensureAuthed();
-      let currentKcClient = await this.kcClient.client.clients.findOne({
-        realm,
-        id,
-      });
+      const allSubresources = await subResourceClient.find({ realm });
+      let currentKcSubresource = allSubresources.find(mappers.findFilterFn);
+      let id = currentKcSubresource?.id;
 
-      if (currentKcClient == null) {
-        // The client does not exist yet. Let's create it
+      if (currentKcSubresource == null) {
+        // The resource does not exist yet. Let's create it
         this.reconcilerLogger.log(
-          `Creating and claiming Keycloak client ${id} in realm ${realm}`,
+          `Creating and claiming Keycloak ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
         );
         await this.kcClient.ensureAuthed();
-        await this.kcClient.client.clients.create({
+        id = (await subResourceClient.create({
           realm,
-          id,
-          clientId: id,
-          name: spec.name,
+          ...mappers.create,
+          ...spec.representation,
           attributes: {
             ...this.options.defaultAttributes,
             ...claimAttribute,
             [crSpecRealmAttributeKey]: JSON.stringify(spec),
           },
-        });
+        })).id;
         await this.kcClient.ensureAuthed();
-        currentKcClient = (await this.kcClient.client.clients.findOne({
+        currentKcSubresource = (await subResourceClient.findOne({
           realm,
           id,
         }))!;
       }
 
-      let claimed = this.isClaimed(currentKcClient);
+      id = id!;
+
+      let claimed = this.isClaimed(currentKcSubresource);
       if (!claimed) {
         this.reconcilerLogger.log(
-          `Client ${mappers.humanReadaleId} is unclaimed in realm ${realm}`,
+          `${subResourceName} ${mappers.humanReadaleId} is unclaimed in realm ${realm}`,
         );
         if (spec.claim) {
           if (spec.recreateOnClaim) {
             this.reconcilerLogger.log(
-              `Recreating and claiming client ${mappers.humanReadaleId} in realm ${realm}`,
+              `Recreating and claiming ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
             );
             await this.kcClient.ensureAuthed();
-            await this.kcClient.client.clients.del({ realm, id });
-            await this.kcClient.client.clients.create({
+            await subResourceClient.del({ realm, id });
+            id = (await subResourceClient.create({
               realm,
               ...mappers.create,
               ...spec.representation,
@@ -95,17 +95,17 @@ class kcInRealmClientCr<
                 ...claimAttribute,
                 [crSpecRealmAttributeKey]: JSON.stringify(spec),
               },
-            });
+            })).id;
             claimed = true;
           } else {
             this.reconcilerLogger.log(
-              `Claiming client ${mappers.humanReadaleId} in realm ${realm}`,
+              `Claiming ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
             );
             await this.kcClient.ensureAuthed();
-            await this.kcClient.client.clients.update({ realm, id }, {
+            await subResourceClient.update({ realm, id }, {
               ...mappers.update,
               attributes: {
-                ...currentKcClient.attributes,
+                ...currentKcSubresource.attributes,
                 ...claimAttribute,
               },
             });
@@ -116,7 +116,7 @@ class kcInRealmClientCr<
 
       if (!claimed) {
         this.reconcilerLogger.error(
-          `Client ${id} in realm ${realm} is not claimed and claiming is disabled`,
+          `${subResourceName} ${mappers.humanReadaleId} in realm ${realm} is not claimed and claiming is disabled`,
         );
         await this.updateCr(selector, { status: { state: "failed" } });
         return;
@@ -139,21 +139,112 @@ class kcInRealmClientCr<
 
       const attributes = {
         ...this.options.defaultAttributes,
-        ...currentKcClient.attributes,
+        ...currentKcSubresource.attributes,
         ...claimAttribute,
         [crSpecRealmAttributeKey]: JSON.stringify(spec),
       };
 
       await this.kcClient.ensureAuthed();
       this.reconcilerLogger.log(
-        `Performing update for client ${id} in realm ${realm}`,
+        `Performing update for ${subResourceName} ${mappers.humanReadaleId} in realm ${realm}`,
       );
-      await this.kcClient.client.clients.update({ realm, id }, {
+      await subResourceClient.update({ realm, id }, {
         ...mappers.update,
         ...spec.representation,
-        secret,
         attributes,
+        secret,
       });
+
+      //#region Reconcile client scopes
+      await this.kcClient.ensureAuthed();
+      const _actualScopesArr = await Promise.all([
+        subResourceClient.listOptionalClientScopes({ realm, id }),
+        subResourceClient.listDefaultClientScopes({ realm, id }),
+      ]);
+      const allClientScopes = await this.kcClient.client.clientScopes.find({
+        realm,
+      });
+
+      const actualScopes = {
+        optional: _actualScopesArr[0],
+        default: _actualScopesArr[1],
+      };
+      const desiredScopes = {
+        optional: spec.scopes?.optional ?? [],
+        default: spec.scopes?.default ?? [],
+      };
+      const lingeringScopes = {
+        optional: actualScopes.optional.filter((s) =>
+          !desiredScopes.optional.some((desired) => s.name === desired)
+        ),
+        default: actualScopes.default.filter((s) =>
+          !desiredScopes.default.some((desired) => s.name === desired)
+        ),
+      };
+      const missingScopes = {
+        optional: desiredScopes.optional.filter((s) =>
+          !actualScopes.optional.some((desired) => s === desired.name)
+        ),
+        default: desiredScopes.default.filter((s) =>
+          !actualScopes.default.some((desired) => s === desired.name)
+        ),
+      };
+
+      await this.kcClient.ensureAuthed();
+      await Promise.all([
+        ...lingeringScopes.optional.map((lingeringScope) => {
+          if (lingeringScope.id == null) {
+            return;
+          }
+          return subResourceClient.delOptionalClientScope({
+            realm,
+            clientScopeId: lingeringScope.id,
+            id,
+          });
+        }),
+        ...lingeringScopes.default.map((lingeringScope) => {
+          if (lingeringScope.id == null) {
+            return;
+          }
+          return subResourceClient.delDefaultClientScope({
+            realm,
+            clientScopeId: lingeringScope.id,
+            id,
+          });
+        }),
+      ]);
+
+      await this.kcClient.ensureAuthed();
+      await Promise.all([
+        ...missingScopes.optional.map((missingScopeName) => {
+          const missingScopeId = allClientScopes.find((s) =>
+            s.name === missingScopeName
+          )?.id;
+          if (missingScopeId == null) {
+            return;
+          }
+          return subResourceClient.addOptionalClientScope({
+            realm,
+            clientScopeId: missingScopeId,
+            id,
+          });
+        }),
+        ...missingScopes.default.map((missingScopeName) => {
+          const missingScopeId = allClientScopes.find((s) =>
+            s.name === missingScopeName
+          )?.id;
+          if (missingScopeId == null) {
+            return;
+          }
+          return subResourceClient.addDefaultClientScope({
+            realm,
+            clientScopeId: missingScopeId,
+            id,
+          });
+        }),
+      ]);
+      //#endregion
+
       await this.updateCr(selector, { status: { state: "synced" } });
     } catch (error) {
       this.reconcilerLogger.error("Error reconciling resource", {
@@ -166,8 +257,12 @@ class kcInRealmClientCr<
 }
 
 const clientCrdSpecificSpecs = z.object({
-  id: z.string(),
+  realm: z.string(),
+  clientId: z.string(),
   name: z.string().optional(),
+  claim: z.boolean().optional(),
+  prune: z.boolean().optional(),
+  recreateOnClaim: z.boolean().optional(),
   secret: z.object({
     value: z.string(),
   }).or(z.object({
@@ -179,14 +274,19 @@ const clientCrdSpecificSpecs = z.object({
       }),
     }),
   })).optional(),
+  scopes: z.object({
+    default: z.array(z.string()).optional(),
+    optional: z.array(z.string()).optional(),
+  }).optional(),
+  representation: z.any(),
 });
 
 export const clientsCr = new kcInRealmClientCr({
   crdIdentifiers: {
     group: "k8s.rightcrowd.com",
     version: "v1alpha1",
-    plural: "keycloakusers",
-    kind: "KeycloakUser",
+    plural: "keycloakclients",
+    kind: "KeycloakClient",
   },
   kcClientSubresource: "clients",
   validationSchemas: {
@@ -195,18 +295,17 @@ export const clientsCr = new kcInRealmClientCr({
   },
   idMappers: {
     find: (spec: z.infer<typeof clientCrdSpecificSpecs>) => ({
-      clientId: spec.id,
+      clientId: spec.clientId,
     }),
     create: (spec: z.infer<typeof clientCrdSpecificSpecs>) => ({
-      clientId: spec.id,
-      id: spec.id,
+      clientId: spec.clientId,
       name: spec.name,
     }),
     update: (spec: z.infer<typeof clientCrdSpecificSpecs>) => ({
-      clientId: spec.id,
-      id: spec.id,
+      clientId: spec.clientId,
       name: spec.name,
     }),
-    humanReadable: (spec: z.infer<typeof clientCrdSpecificSpecs>) => spec.id,
+    humanReadable: (spec: z.infer<typeof clientCrdSpecificSpecs>) =>
+      spec.clientId,
   },
 });

@@ -1,12 +1,13 @@
 import { z } from "npm:zod";
 import {
+  baseSpec,
   kcInRealmResourceCr,
   makeZCustomResourceSchema,
 } from "../genericKcInRealmResourceCr.ts";
 
 const crdSpecificSpecs = z.object({
   id: z.string(),
-});
+}).extend(baseSpec);
 
 const clientScopesCr = new kcInRealmResourceCr({
   crdIdentifiers: {
@@ -71,7 +72,7 @@ const userCrdSpecificSpecs = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   username: z.string(),
-});
+}).extend(baseSpec);
 
 const usersCr = new kcInRealmResourceCr({
   crdIdentifiers: {

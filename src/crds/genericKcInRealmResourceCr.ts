@@ -25,6 +25,14 @@ const zCrdStatus = z.object({
   ]).optional(),
 }).optional();
 
+export const baseSpec = {
+  prune: z.boolean().optional().default(true),
+  claim: z.boolean().optional().default(true),
+  recreateOnClaim: z.boolean().optional().default(false),
+  realm: z.string(),
+  representation: z.any(),
+} as const;
+
 export const makeZCustomResourceSchema = <
   SpecSchema extends AnyZodObject = AnyZodObject,
 >(spec: SpecSchema) =>
@@ -36,14 +44,7 @@ export const makeZCustomResourceSchema = <
       name: z.string(),
       annotations: z.record(z.string(), z.string()).optional(),
     }).passthrough(),
-    spec: spec.extend({
-      prune: z.boolean().optional().default(true),
-      claim: z.boolean().optional().default(true),
-      recreateOnClaim: z.boolean().optional().default(false),
-      realm: z.string(),
-      //   id: z.string(),
-      representation: z.any(),
-    }),
+    spec,
     status: zCrdStatus,
   });
 
