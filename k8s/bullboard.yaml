@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bullboard-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bullboard
+  template:
+    metadata:
+      labels:
+        app: bullboard
+    spec:
+      containers:
+      - name: bullboard
+        image: venatum/bull-board
+        ports:
+          - containerPort: 3000
+        env:
+          - name: REDIS_HOST
+            value: operator-redis-svc.default.svc.cluster.local
+          - name: REDIS_PORT
+            value: "6379"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi
