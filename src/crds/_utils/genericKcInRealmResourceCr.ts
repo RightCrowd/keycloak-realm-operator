@@ -2,18 +2,18 @@
 import KcAdminClient from "npm:@keycloak/keycloak-admin-client";
 import z, { AnyZodObject } from "npm:zod";
 import { ZodSchema } from "npm:zod";
-import { Logger } from "../util.ts";
-import { KeycloakClient } from "../keycloak.ts";
+import { Logger } from "../../util.ts";
+import { KeycloakClient } from "../../keycloak.ts";
 import {
   CrSelector,
   updateCr as updateCrGeneric,
   validateCrHash,
   zBasicCr,
-} from "./crd-mgmt-utils.ts";
-import { k8sApiMC, watcher } from "../k8s.ts";
+} from "../_utils/crd-mgmt-utils.ts";
+import { k8sApiMC, watcher } from "../../k8s.ts";
 import { Queue, Worker } from "npm:bullmq";
-import { getConfig } from "../config.ts";
-import { host, password, port, username } from "../redis.ts";
+import { getConfig } from "../../config.ts";
+import { host, password, port, username } from "../../redis.ts";
 
 const zCrdStatus = z.object({
   state: z.enum([

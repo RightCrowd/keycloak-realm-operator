@@ -1,11 +1,11 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "npm:redis";
-import { connectionString } from "../redis.ts";
-import { Logger } from "../util.ts";
+import { connectionString } from "../../redis.ts";
+import { Logger } from "../../util.ts";
 import { crypto } from "jsr:@std/crypto";
 import { Buffer } from "node:buffer";
 import { encodeHex } from "jsr:@std/encoding/hex";
-import { k8sApiMC } from "../k8s.ts";
+import { k8sApiMC } from "../../k8s.ts";
 import { z } from "npm:zod";
 
 const logger = new Logger("crd-mgmt-utils");

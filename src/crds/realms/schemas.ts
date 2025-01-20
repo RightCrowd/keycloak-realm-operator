@@ -1,5 +1,5 @@
 import z from "npm:zod";
-import { CrSelector } from "../crd-mgmt-utils.ts";
+import { CrSelector } from "../_utils/crd-mgmt-utils.ts";
 
 export const zCrdSpec = z.object({
   realmId: z.string(),

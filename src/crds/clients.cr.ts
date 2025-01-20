@@ -1,5 +1,5 @@
 import z from "npm:zod";
-import { CrSelector } from "../crd-mgmt-utils.ts";
+import { CrSelector } from "./_utils/crd-mgmt-utils.ts";
 import {
   claimAttribute,
   crSpecRealmAttributeKey,
@@ -7,8 +7,8 @@ import {
   type GenericKcInRealmResourceCrSpecsBase,
   kcInRealmResourceCr,
   makeZCustomResourceSchema,
-} from "../genericKcInRealmResourceCr.ts";
-import { k8sApiPods } from "../../k8s.ts";
+} from "./_utils/genericKcInRealmResourceCr.ts";
+import { k8sApiPods } from "../k8s.ts";
 
 type GenericKcInRealmResourceCrSpecsBase_ClientScoped =
   GenericKcInRealmResourceCrSpecsBase<"clients">;
