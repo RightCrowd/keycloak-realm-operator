@@ -346,7 +346,6 @@ export class kcInRealmResourceCr<
         return;
       }
 
-      this.kcClient.client.clientScopes.findProtocolMapper;
       await this.kcClient.ensureAuthed();
       const allSubresources = await subResourceClient.find({ realm });
       let currentKcSubresource = allSubresources.find(mappers.findFilterFn);
