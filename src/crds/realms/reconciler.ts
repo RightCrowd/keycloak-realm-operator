@@ -10,7 +10,7 @@ import {
 import { k8sApiMC } from "../../k8s.ts";
 import { KeycloakClient } from "../../keycloak.ts";
 import { Logger } from "../../util.ts";
-import { type CrSelector } from "../crd-mgmt-utils.ts";
+import { type CrSelector } from "../_utils/crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
 import type { RealmRepresentation } from "../../keycloak.ts";
 

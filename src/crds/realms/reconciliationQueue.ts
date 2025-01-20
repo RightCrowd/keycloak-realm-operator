@@ -3,7 +3,7 @@ import { reconcileAllResources, reconcileResource } from "./reconciler.ts";
 import { Logger } from "../../util.ts";
 import { host, password, port, username } from "../../redis.ts";
 import { CUSTOMRESOURCE_PLURAL, CustomResourceIn } from "./schemas.ts";
-import { CrSelector } from "../crd-mgmt-utils.ts";
+import { CrSelector } from "../_utils/crd-mgmt-utils.ts";
 import { getConfig } from "../../config.ts";
 
 const logger = new Logger("managed-realms:reconciliationQueue");

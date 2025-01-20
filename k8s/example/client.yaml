@@ -3,10 +3,13 @@ kind: KeycloakClient
 metadata:
   name: funny-client
 spec:
-  realmId: funny
+  realm: funny
   clientId: funny-client
   name: Funny Client
-  pruneClient: true
-  claimClient: true
+  prune: true
+  claim: true
+  scopes:
+    default:
+      - test-scope
   representation:
     implicitFlowEnabled: true

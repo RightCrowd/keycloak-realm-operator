@@ -12,7 +12,7 @@ import { V1Secret } from "npm:@kubernetes/client-node";
 import { type ClientRepresentation, KeycloakClient } from "../../keycloak.ts";
 import { Logger } from "../../util.ts";
 import { parse } from "npm:@ctrl/golang-template";
-import { type CrSelector } from "../crd-mgmt-utils.ts";
+import { type CrSelector } from "../_utils/crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
 
 const logger = new Logger("client-credentials reconciler");

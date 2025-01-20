@@ -15,7 +15,7 @@ import {
   updateCr as updateCrGeneric,
   validateCrHash,
   zBasicCr,
-} from "../crd-mgmt-utils.ts";
+} from "../_utils/crd-mgmt-utils.ts";
 
 const logger = new Logger("client-credentials crd handler");
 

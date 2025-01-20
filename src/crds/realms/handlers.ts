@@ -13,7 +13,7 @@ import {
   updateCr as updateCrGeneric,
   validateCrHash,
   zBasicCr,
-} from "../crd-mgmt-utils.ts";
+} from "../_utils/crd-mgmt-utils.ts";
 import { addReconciliationJob } from "./reconciliationQueue.ts";
 import { scheduleJobNow as promoteCleanupJob } from "./cleanupQueue.ts";
 

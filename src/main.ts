@@ -1,6 +1,9 @@
 import { validateConfig } from "./config.ts";
 import "./k8s.ts";
-import { startAllQueues, startAllWatchers } from "./crds/startWatchers.ts";
+import {
+  startAllQueues,
+  startAllWatchers,
+} from "./crds/_utils/startWatchers.ts";
 import { Logger } from "./util.ts";
 import { getConfig } from "./config.ts";
 
