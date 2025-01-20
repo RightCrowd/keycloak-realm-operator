@@ -536,7 +536,7 @@ export class kcInRealmResourceCr<
           );
           continue;
         }
-        if (!oldSpec.pruneClient) {
+        if (!oldSpec.prune) {
           const newAttributes = Object.keys(
             subResourcesRepresentation.attributes ?? {},
           )
