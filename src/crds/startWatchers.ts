@@ -1,5 +1,4 @@
 import { startWatching as startWatchingManagedRealms } from "./realms/handlers.ts";
-import { startWatching as startWatchingManagedClients } from "./clients/handlers.ts";
 import { startWatching as startWatchingClientCredentials } from "./client-credentials/handlers.ts";
 
 import {
@@ -12,15 +11,6 @@ import {
 } from "./realms/reconciliationQueue.ts";
 
 import {
-  scheduleJobNow as scheduleClientsCleanupJobNow,
-  scheduleJobs as scheduleClientsCleanupJobs,
-} from "./clients/cleanupQueue.ts";
-import {
-  scheduleJobNow as _scheduleClientsReconciliationNow,
-  scheduleJobs as scheduleClientsReconciliation,
-} from "./clients/reconciliationQueue.ts";
-
-import {
   scheduleJobNow as scheduleSecretCleanupJobNow,
   scheduleJobs as scheduleSecretCleanupJobs,
 } from "./client-credentials/secretsCleanupQueue.ts";
@@ -30,12 +20,13 @@ import {
 } from "./client-credentials/reconciliationQueue.ts";
 
 import { genericCrds } from "./genericCrds/genericCrds.ts";
+import { clientsCr } from "./clients/clientsCrd.ts";
 
 export const startAllWatchers = async () => {
   await Promise.all([
     startWatchingManagedRealms(),
-    startWatchingManagedClients(),
     startWatchingClientCredentials(),
+    clientsCr.startWatching(),
     ...genericCrds.map((c) => c.startWatching()),
   ]);
 };
@@ -48,8 +39,8 @@ export const startAllQueues = async () => {
     scheduleRealmsCleanupJobs(),
     scheduleRealmsReconciliation(),
 
-    scheduleClientsCleanupJobs(),
-    scheduleClientsReconciliation(),
+    clientsCr.scheduleCleanupJobs(),
+    clientsCr.scheduleReconciliationJobs(),
 
     ...genericCrds.map((c) => [
       c.scheduleCleanupJobs(),
@@ -61,7 +52,7 @@ export const startAllQueues = async () => {
   await Promise.all([
     scheduleSecretCleanupJobNow(),
     scheduleRealmsCleanupJobNow(),
-    scheduleClientsCleanupJobNow(),
+    clientsCr.scheduleCleanupJobNow(),
     ...genericCrds.map((c) => c.scheduleCleanupJobNow()),
   ]);
 };

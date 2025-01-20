@@ -52,9 +52,10 @@ const allowedSubresources = [
   "clientScopes",
   "groups",
   "users",
+  "clients",
 ] as const satisfies KcSubResource[];
 
-type GenericKcInRealmResourceCrSpecsBase<
+export type GenericKcInRealmResourceCrSpecsBase<
   SubRes extends (typeof allowedSubresources)[number] =
     (typeof allowedSubresources)[number],
 > = {
@@ -106,15 +107,17 @@ type GenericKcInRealmResourceCrSpecsBase<
   };
 };
 
-type GenericKcInRealmResourceCrSpecs<
+export type GenericKcInRealmResourceCrSpecs<
   T extends GenericKcInRealmResourceCrSpecsBase,
 > = T;
 
-const keycloakAttributePrefix = "k8s.rightcrowd.com/keycloak-realm-operator";
-const claimAttribute = {
+export const keycloakAttributePrefix =
+  "k8s.rightcrowd.com/keycloak-realm-operator";
+export const claimAttribute = {
   [`${keycloakAttributePrefix}/claim`]: "true",
 };
-const crSpecRealmAttributeKey = `${keycloakAttributePrefix}/cr-spec-serialized`;
+export const crSpecRealmAttributeKey =
+  `${keycloakAttributePrefix}/cr-spec-serialized`;
 
 type ReconcilerJobData<T extends GenericKcInRealmResourceCrSpecsBase> = {
   all?: boolean;
@@ -127,26 +130,26 @@ type ReconcilerJobData<T extends GenericKcInRealmResourceCrSpecsBase> = {
 export class kcInRealmResourceCr<
   T extends GenericKcInRealmResourceCrSpecsBase,
 > {
-  private reconcilerLogger: Logger;
-  private cleanupLogger: Logger;
-  private crdHandlerLogger: Logger;
-  private reconciliationQueueLogger: Logger;
-  private cleanupQueueLogger: Logger;
+  public readonly reconcilerLogger: Logger;
+  public readonly cleanupLogger: Logger;
+  public readonly crdHandlerLogger: Logger;
+  public readonly reconciliationQueueLogger: Logger;
+  public readonly cleanupQueueLogger: Logger;
 
-  private kcClient: KeycloakClient;
-  private updateCr;
+  public readonly kcClient: KeycloakClient;
+  public readonly updateCr;
 
-  private reconciliationJobName;
-  private reconciliationJobQueueName;
-  private reconciliationQueue;
-  private reconciliationWorker;
+  public readonly reconciliationJobName;
+  public readonly reconciliationJobQueueName;
+  public readonly reconciliationQueue;
+  public readonly reconciliationWorker;
 
-  private cleanupJobName;
-  private cleanupJobQueueName;
-  private cleanupQueue;
-  private cleanupWorker;
+  public readonly cleanupJobName;
+  public readonly cleanupJobQueueName;
+  public readonly cleanupQueue;
+  public readonly cleanupWorker;
 
-  constructor(private options: GenericKcInRealmResourceCrSpecs<T>) {
+  constructor(public options: GenericKcInRealmResourceCrSpecs<T>) {
     this.reconcilerLogger = new Logger(
       `${options.crdIdentifiers.plural} reconciler`,
     );
