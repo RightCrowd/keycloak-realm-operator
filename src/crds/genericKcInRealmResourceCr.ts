@@ -124,6 +124,40 @@ type ReconcilerJobData<T extends GenericKcInRealmResourceCrSpecsBase> = {
   }[];
 };
 
+type LocicOverrideUtilities<T extends GenericKcInRealmResourceCrSpecsBase = GenericKcInRealmResourceCrSpecsBase> = {
+  kcClient: KeycloakClient
+  options: T
+  logger: Logger
+}
+
+type LogicOverrides<T extends GenericKcInRealmResourceCrSpecsBase = GenericKcInRealmResourceCrSpecsBase> = {
+  precheck: (specifics: { apiObj: z.output<T["validationSchemas"]["customResourceIn"]>, selector: CrSelector }, c: LocicOverrideUtilities) => Promise<unknown>;
+  findOne: (findFilterFn: (...args: any[]) => boolean, realm: string, c: LocicOverrideUtilities) => Promise<unknown>;
+  create: (c: LocicOverrideUtilities) => Promise<unknown>;
+  delete: (c: LocicOverrideUtilities) => Promise<unknown>;
+}
+
+const defaultLogicOverrides: LogicOverrides = {
+  async precheck({ apiObj }, { kcClient, logger }) {
+    const realm = apiObj?.['spec']?.['realm'] as undefined | string
+    if (realm == null) {
+      logger.error(`Realm not specified`);
+      throw new Error(`Realm not specified`);
+    }
+    await kcClient.client.realms.findOne({ realm })
+    await kcClient.ensureAuthed();
+    if ((await kcClient.client.realms.findOne({ realm })) == null) {
+      logger.error(`Realm not found ${realm}`);
+      throw new Error(`Realm not found ${realm}`);
+    }
+  },
+  async findOne(findFilterFn, realm, { kcClient, options }) {
+    await kcClient.ensureAuthed();
+    const allSubresources = await kcClient.client[options.kcClientSubresource].find({ realm });
+    return allSubresources.find(findFilterFn);
+  }
+}
+
 export class kcInRealmResourceCr<
   T extends GenericKcInRealmResourceCrSpecsBase,
 > {
@@ -146,7 +180,7 @@ export class kcInRealmResourceCr<
   private cleanupQueue;
   private cleanupWorker;
 
-  constructor(private options: GenericKcInRealmResourceCrSpecs<T>) {
+  constructor(private options: GenericKcInRealmResourceCrSpecs<T>, private logicOverrides?: Partial<LogicOverrides<T>>) {
     this.reconcilerLogger = new Logger(
       `${options.crdIdentifiers.plural} reconciler`,
     );
@@ -338,19 +372,15 @@ export class kcInRealmResourceCr<
 
       const mappers = this.getMappers(spec);
 
-      // Make sure the realm exists
-      await this.kcClient.ensureAuthed();
-      if ((await this.kcClient.client.realms.findOne({ realm })) == null) {
-        this.reconcilerLogger.error(`Realm not found ${realm}`);
-        await this.updateCr(selector, { status: { state: "failed" } });
-        return;
-      }
+      await (this.logicOverrides?.precheck ?? defaultLogicOverrides.precheck)?.({ apiObj, selector }, { kcClient: this.kcClient, logger: this.reconcilerLogger, options: this.options })
 
-      this.kcClient.client.clientScopes.findProtocolMapper;
-      await this.kcClient.ensureAuthed();
-      const allSubresources = await subResourceClient.find({ realm });
-      let currentKcSubresource = allSubresources.find(mappers.findFilterFn);
-      let id = currentKcSubresource?.id;
+      let currentKcSubresource = await (this.logicOverrides?.findOne ?? defaultLogicOverrides.findOne)?.(mappers.findFilterFn, realm, { kcClient: this.kcClient, logger: this.reconcilerLogger, options: this.options })
+      let id: string | undefined
+      if (typeof currentKcSubresource === 'object' && currentKcSubresource != null && 'id' in currentKcSubresource) {
+        if (typeof currentKcSubresource.id === 'string') {
+          id = currentKcSubresource.id
+        }
+      }
 
       if (currentKcSubresource == null) {
         // The resource does not exist yet. Let's create it
