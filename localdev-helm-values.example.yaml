@@ -5,3 +5,5 @@ keycloak:
   password:
     value: admin
 operatorImage: keycloak-realm-operator
+mode: single
+# workerInstances: 3

@@ -16,6 +16,7 @@ const booleanishPreprocess = (v?: unknown) => {
 
 const zConfig = z.object({
   KEYCLOAK_URL: z.string().url(),
+  OPERATOR_NAMESPACE: z.string().min(1),
   KEYCLOAK_USERNAME: z.string(),
   KEYCLOAK_PASSWORD: z.string(),
   SECRET_TARGET_NAMESPACE_STRATEGY: z.preprocess(

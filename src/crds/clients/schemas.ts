@@ -52,6 +52,7 @@ export const zCustomResourceIn = z.object({
   apiVersion: z.string(),
   kind: z.string(),
   metadata: z.object({
+    uid: z.string(),
     name: z.string(),
     annotations: z.record(z.string(), z.string()).optional(),
   }).passthrough(),
@@ -76,10 +77,12 @@ export type CustomResourceIn = z.output<typeof zCustomResourceIn>;
 export const CUSTOMRESOURCE_GROUP = "k8s.rightcrowd.com";
 export const CUSTOMRESOURCE_VERSION = "v1alpha1";
 export const CUSTOMRESOURCE_PLURAL = "keycloakclients";
+export const CUSTOMRESOURCE_KIND = "KeycloakClient";
 
 export const makeSelector = (name: string): CrSelector => ({
   group: CUSTOMRESOURCE_GROUP,
   plural: CUSTOMRESOURCE_PLURAL,
   version: CUSTOMRESOURCE_VERSION,
+  kind: CUSTOMRESOURCE_KIND,
   name,
 });

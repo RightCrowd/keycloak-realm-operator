@@ -10,7 +10,11 @@ import {
 import { k8sApiMC } from "../../k8s.ts";
 import { KeycloakClient } from "../../keycloak.ts";
 import { Logger } from "../../util.ts";
-import { type CrSelector } from "../crd-mgmt-utils.ts";
+import {
+  type CrSelector,
+  CrSelectorWithUid,
+  logCrEvent,
+} from "../crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
 import type { ClientRepresentation } from "../../keycloak.ts";
 import { k8sApiPods } from "../../k8s.ts";
@@ -40,8 +44,12 @@ const isClaimed = (
 
 export const reconcileResource = async (
   apiObj: CustomResourceIn,
-  selector: CrSelector,
+  _selector: CrSelector,
 ) => {
+  const selector: CrSelectorWithUid = {
+    ..._selector,
+    uid: apiObj.metadata.uid,
+  };
   logger.log(
     `Reconciling CR`,
     selector,
@@ -57,20 +65,35 @@ export const reconcileResource = async (
     if ((await kcClient.client.realms.findOne({ realm })) == null) {
       logger.error(`Realm not found ${realm}`);
       await updateCr(selector, { status: { state: "failed" } });
+      await logCrEvent(selector, {
+        message: `Realm ${realm} not found`,
+        type: "Warning",
+        reason: "Syncing",
+      });
       return;
     }
 
     await kcClient.ensureAuthed();
-    let currentKcClient = await kcClient.client.clients.findOne({
+    const _client = await kcClient.client.clients.findOne({
       realm,
       id,
     });
+    const _clients = await kcClient.client.clients.find({
+      realm,
+      // id,
+    });
+    let currentKcClient = _clients.find((c) => c.clientId === id);
 
     if (currentKcClient == null) {
       // The client does not exist yet. Let's create it
       logger.log(
         `Creating and claiming Keycloak client ${id} in realm ${realm}`,
       );
+      await logCrEvent(selector, {
+        message:
+          `Creating and claiming Keycloak client ${id} in realm ${realm}`,
+        reason: "Syncing",
+      });
       await kcClient.ensureAuthed();
       await kcClient.client.clients.create({
         realm,
@@ -92,8 +115,16 @@ export const reconcileResource = async (
     let claimed = isClaimed(currentKcClient);
     if (!claimed) {
       logger.log(`Client ${id} is unclaimed in realm ${realm}`);
+      await logCrEvent(selector, {
+        message: `Client ${id} is unclaimed in realm ${realm}`,
+        reason: "Syncing",
+      });
       if (spec.claimClient) {
         logger.log(`Claiming client ${id} in realm ${realm}`);
+        await logCrEvent(selector, {
+          message: `Claiming client ${id} in realm ${realm}`,
+          reason: "Syncing",
+        });
         await kcClient.ensureAuthed();
         await kcClient.client.clients.update({ realm, id }, {
           attributes: {
@@ -109,6 +140,12 @@ export const reconcileResource = async (
       logger.error(
         `Client ${id} in realm ${realm} is not claimed and claiming is disabled`,
       );
+      await logCrEvent(selector, {
+        message:
+          `Client ${id} in realm ${realm} is not claimed and claiming is disabled`,
+        type: "Warning",
+        reason: "Syncing",
+      });
       await updateCr(selector, { status: { state: "failed" } });
       return;
     }
@@ -142,6 +179,10 @@ export const reconcileResource = async (
     // if (specChanged) {
     await kcClient.ensureAuthed();
     logger.log(`Performing update for client ${id} in realm ${realm}`);
+    await logCrEvent(selector, {
+      message: `Performing update for client ${id} in realm ${realm}`,
+      reason: "Syncing",
+    });
     await kcClient.client.clients.update({ realm, id }, {
       ...spec.representation,
       secret,
@@ -151,6 +192,10 @@ export const reconcileResource = async (
     });
     // }
 
+    await logCrEvent(selector, {
+      message: `Synced successfully`,
+      reason: "Syncing",
+    });
     await updateCr(selector, { status: { state: "synced" } });
   } catch (error) {
     logger.error("Error reconciling resource", {

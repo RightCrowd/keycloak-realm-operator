@@ -7,6 +7,9 @@ import { Buffer } from "node:buffer";
 import { encodeHex } from "jsr:@std/encoding/hex";
 import { k8sApiMC } from "../k8s.ts";
 import { z } from "npm:zod";
+// import { k8sApiPods } from "../k8s.ts";
+import { CoreV1Event } from "npm:@kubernetes/client-node";
+import { getConfig } from "../config.ts";
 
 const logger = new Logger("crd-mgmt-utils");
 
@@ -89,6 +92,11 @@ export type CrSelector = {
   plural: string;
   name: string;
   namespace?: string;
+  kind: string;
+};
+
+export type CrSelectorWithUid = CrSelector & {
+  uid: string;
 };
 
 type CrUpdates = {
@@ -235,4 +243,87 @@ export const updateCr = async <Schema extends CrUpdates = CrUpdates>(
       },
     );
   }
+};
+
+type Event = {
+  type?: "Normal" | "Warning";
+  message: string;
+  reason?: string;
+};
+
+function getRandomString(s: number) {
+  if (s % 2 == 1) {
+    throw new Deno.errors.InvalidData("Only even sizes are supported");
+  }
+  const buf = new Uint8Array(s / 2);
+  crypto.getRandomValues(buf);
+  let ret = "";
+  for (let i = 0; i < buf.length; ++i) {
+    ret += ("0" + buf[i].toString(16)).slice(-2);
+  }
+  return ret;
+}
+
+// deno-lint-ignore require-await
+export const logCrEvent = async (
+  selector: CrSelectorWithUid,
+  event: Event,
+) => {
+  const date = new Date(new Date().setMilliseconds(0));
+
+  const namePrefix = [
+    selector.group,
+    selector.plural,
+    selector.name,
+    selector.namespace,
+  ].filter(Boolean).join("-");
+
+  // deno-lint-ignore no-unused-vars
+  const e: CoreV1Event = {
+    apiVersion: "v1",
+    kind: "Event",
+    metadata: {
+      name: `${namePrefix}-${getRandomString(10)}`,
+      namespace: getConfig().OPERATOR_NAMESPACE,
+    },
+    involvedObject: {
+      apiVersion: selector.version,
+      kind: selector.kind,
+      name: selector.name,
+      namespace: selector.namespace,
+      uid: selector.uid,
+    },
+    type: event.type ?? "Normal",
+    reason: event.reason,
+    message: event.message,
+    source: {
+      component: "keycloak-realm-operator",
+    },
+    lastTimestamp: date,
+    firstTimestamp: date,
+    count: 1,
+  };
+
+  // ⬇️ Disabling the creation of events for now as cleanup isn't implemented yet.
+
+  // const oldEvents = (await k8sApiPods.listNamespacedEvent(getConfig().OPERATOR_NAMESPACE)).body.items.filter(e => e.metadata.name?.startsWith(namePrefix))
+
+  // const { involvedObject, type, reason, message, source } = e
+  // const newEventComparisonData = { involvedObject, type, reason, message, source }
+  // const newEventComparisonJSON = JSON.stringify(newEventComparisonData)
+
+  // const matchingOldEvent = oldEvents.find(oldEvent => {
+  //   const { involvedObject, type, reason, message, source } = oldEvent
+  //   const oldEventData = {involvedObject, type, reason, message, source}
+  //   return JSON.stringify(oldEventData) === newEventComparisonJSON
+  // })
+
+  // if (matchingOldEvent != null) {
+  //   await k8sApiPods.patchNamespacedEvent(matchingOldEvent.metadata.name!, getConfig().OPERATOR_NAMESPACE, {
+  //     lastTimestamp: date,
+  //   })
+  //   return
+  // }
+
+  // await k8sApiPods.createNamespacedEvent(getConfig().OPERATOR_NAMESPACE, e);
 };

@@ -10,7 +10,11 @@ import {
 import { k8sApiMC } from "../../k8s.ts";
 import { KeycloakClient } from "../../keycloak.ts";
 import { Logger } from "../../util.ts";
-import { type CrSelector } from "../crd-mgmt-utils.ts";
+import {
+  type CrSelector,
+  CrSelectorWithUid,
+  logCrEvent,
+} from "../crd-mgmt-utils.ts";
 import { updateCr } from "./handlers.ts";
 import type { RealmRepresentation } from "../../keycloak.ts";
 
@@ -39,8 +43,12 @@ const isClaimed = (
 
 export const reconcileResource = async (
   apiObj: CustomResourceIn,
-  selector: CrSelector,
+  _selector: CrSelector,
 ) => {
+  const selector: CrSelectorWithUid = {
+    ..._selector,
+    uid: apiObj.metadata.uid,
+  };
   logger.log(
     `Reconciling CR`,
     selector,
@@ -59,6 +67,10 @@ export const reconcileResource = async (
     if (currentKcRealm == null) {
       // The realm does not exist yet. Let's create it
       logger.log(`Creating and claiming Keycloak realm ${realm}`);
+      await logCrEvent(selector, {
+        message: `Creating and claiming Keycloak realm ${realm}`,
+        reason: "Syncing",
+      });
       await kcClient.ensureAuthed();
       await kcClient.client.realms.create({
         realm,
@@ -77,6 +89,10 @@ export const reconcileResource = async (
     let realmClaimed = isClaimed(currentKcRealm);
     if (!realmClaimed) {
       logger.log(`Realm ${realm} is unclaimed`);
+      await logCrEvent(selector, {
+        message: `Realm ${realm} is unclaimed`,
+        reason: "Syncing",
+      });
       if (spec.claimRealm) {
         logger.log(`Claiming realm ${realm}`);
         await kcClient.ensureAuthed();
@@ -92,6 +108,11 @@ export const reconcileResource = async (
 
     if (!realmClaimed) {
       logger.error(`Realm ${realm} is not claimed and claiming is disabled`);
+      await logCrEvent(selector, {
+        message: `Realm ${realm} is not claimed and claiming is disabled`,
+        reason: "Syncing",
+        type: "Warning",
+      });
       await updateCr(selector, { status: { state: "failed" } });
       return;
     }
@@ -110,6 +131,10 @@ export const reconcileResource = async (
     // if (specChanged) {
     await kcClient.ensureAuthed();
     logger.log(`Performing update for realm ${realm}`);
+    await logCrEvent(selector, {
+      message: `Performing update for realm ${realm}`,
+      reason: "Syncing",
+    });
     await kcClient.client.realms.update({ realm }, {
       ...spec.representation,
       attributes,
@@ -124,6 +149,11 @@ export const reconcileResource = async (
         logger.log(
           `Performing partial import (index ${index}) for realm ${realm}`,
         );
+        await logCrEvent(selector, {
+          message:
+            `Performing partial import (index ${index}) for realm ${realm}`,
+          reason: "Syncing",
+        });
         await kcClient.client.realms.partialImport({
           realm,
           rep: {
@@ -134,11 +164,20 @@ export const reconcileResource = async (
       }
     }
 
+    await logCrEvent(selector, {
+      message: `Synced successfully`,
+      reason: "Syncing",
+    });
     await updateCr(selector, { status: { state: "synced" } });
   } catch (error) {
     logger.error("Error reconciling resource", {
       selector,
       error,
+    });
+    await logCrEvent(selector, {
+      message: `Unknown error while reconciling resource: ${error}`,
+      reason: "Syncing",
+      type: "Warning",
     });
     await updateCr(selector, { status: { state: "failed" } });
   }
