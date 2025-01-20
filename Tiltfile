@@ -19,6 +19,9 @@ docker_build('keycloak-realm-operator',
 yaml = helm('k8s/helm', values=['localdev-helm-values.yaml'])
 k8s_yaml(blob(str(yaml)))
 
+# Bullboard (dev tool) ⬇️
+k8s_yaml('k8s/bullboard.yaml')
+
 # Example ⬇️
 k8s_yaml('k8s/example/realm.yaml')
 k8s_yaml('k8s/example/realm-with-import.yaml')
@@ -33,3 +36,4 @@ k8s_yaml('k8s/example/clientscopes.yaml')
 k8s_yaml('k8s/example/user.yaml')
 
 k8s_resource('keycloak-realm-operator-deployment', port_forwards=[12345])
+k8s_resource('bullboard-deployment', port_forwards=[3000])
