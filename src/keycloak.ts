@@ -41,15 +41,22 @@ export class KeycloakClient {
     realmName: "master",
   });
 
-  private async autheticate(refreshToken?: string) {
+  private async authenticate(refreshToken?: string) {
     try {
-      await this.client.auth({
-        username: getConfig().KEYCLOAK_USERNAME,
-        password: getConfig().KEYCLOAK_PASSWORD,
-        grantType: "password",
-        clientId: "admin-cli",
-        refreshToken,
-      });
+      if(refreshToken){
+        await this.client.auth({
+          grantType: 'refresh_token',
+          clientId: 'admin-cli',
+          refreshToken,
+        });
+      }else{
+        await this.client.auth({
+          username: getConfig().KEYCLOAK_USERNAME,
+          password: getConfig().KEYCLOAK_PASSWORD,
+          grantType: "password",
+          clientId: "admin-cli",
+        });
+      }
     } catch (error) {
       logger.log("Failed to authenticate with Keycloak");
       throw error;
@@ -59,14 +66,14 @@ export class KeycloakClient {
   async ensureAuthed() {
     if (this.client.accessToken == null) {
       logger.log("Authenticating against KC");
-      await this.autheticate();
+      await this.authenticate();
       return;
     }
     const accessToken = this.client.accessToken!;
     const expirationDate = new Date(jwtDecode(accessToken).exp!);
     if (new Date().getTime() > expirationDate.getTime() - 5 * 60 * 1000) {
       logger.log("Refreshing KC token");
-      await this.autheticate(this.client.refreshToken);
+      await this.authenticate(this.client.refreshToken);
     }
   }
 
