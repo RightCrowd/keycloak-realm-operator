@@ -43,13 +43,13 @@ export class KeycloakClient {
 
   private async authenticate(refreshToken?: string) {
     try {
-      if(refreshToken){
+      if (refreshToken) {
         await this.client.auth({
-          grantType: 'refresh_token',
-          clientId: 'admin-cli',
+          grantType: "refresh_token",
+          clientId: "admin-cli",
           refreshToken,
         });
-      }else{
+      } else {
         await this.client.auth({
           username: getConfig().KEYCLOAK_USERNAME,
           password: getConfig().KEYCLOAK_PASSWORD,
