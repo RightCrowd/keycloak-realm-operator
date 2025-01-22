@@ -23,17 +23,9 @@ k8s_yaml(blob(str(yaml)))
 k8s_yaml('k8s/bullboard.yaml')
 
 # Example ⬇️
-k8s_yaml('k8s/example/realm.yaml')
-k8s_yaml('k8s/example/realm-with-import.yaml')
+# k8s_yaml('k8s/example/*')
 
-k8s_yaml('k8s/example/client.yaml')
-k8s_yaml('k8s/example/defined-secret-client.yaml')
-
-k8s_yaml('k8s/example/client-credential.yaml')
-
-k8s_yaml('k8s/example/clientscopes.yaml')
-
-k8s_yaml('k8s/example/user.yaml')
+k8s_yaml(local('for each in ./k8s/example/*.yaml; do cat $each; echo "\n---"; done'))
 
 k8s_resource('keycloak-realm-operator-deployment', port_forwards=[12345])
 k8s_resource('bullboard-deployment', port_forwards=[3000])

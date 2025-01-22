@@ -72,3 +72,5 @@ Temporary Items
 dist
 localdev-helm-values.yaml
 keycloak-realm-operator-*.tgz
+*.secret
+*.secret.*
