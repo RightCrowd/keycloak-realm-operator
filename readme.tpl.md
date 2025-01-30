@@ -3,16 +3,16 @@ A Kubernetes operator for managing resources in Keycloak; The project aims to en
 
 > ⚠️ This is a WIP project.
 
-While there is a little bit of overlap with the [Keycloak Operator](https://www.keycloak.org/operator/installation), this project mostly focusses on different concerns and can perfectly be used in conjunction the Keycloak Operator (which is more focussed on the deployment of Keycloak _itself_).
+While there is a little bit of overlap with the [Keycloak Operator](https://www.keycloak.org/operator/installation), this project mostly focusses on different concerns and can perfectly be used in conjunction with the Keycloak Operator (which is more focused on the deployment of Keycloak _itself_).
 
 # Current and future features
 - [x] Sync client credentials from Keycloak to Kubernetes secrets (Implemented ✅)
 - [x] Create and actively manage Keycloak realms from Kubernetes CRs (Implemented ✅)
 - [x] Create and actively manage Keycloak clients from Kubernetes CRs (Implemented ✅)
-- [x] Realm import which runs every reconciliation in order to cover for management of resources in Keycloak that are not yet supported by the operator. (Implemented ✅)
-- [ ] Management of client scopes (Partly implemented, not documented ⏳)
-- [ ] Management of users (Partly implemented, not documented ⏳)
-- [ ] Management of groups (Partly implemented, not working, not documented ⏳)
+- [x] Realm import, which runs every reconciliation in order to cover for management of resources in Keycloak that are not yet supported by the operator. (Implemented ✅)
+- [ ] Management of client scopes (Partially implemented, not documented ⏳)
+- [ ] Management of users (Partially implemented, not documented ⏳)
+- [ ] Management of groups (Partially implemented, not working, not documented ⏳)
 
 # Installation with Helm
 ```sh
@@ -66,7 +66,7 @@ This can be useful to set up resources not directly supported by the operator.
 ⚠️ Beware: This performs a simple Keycloak partial realm import. The operator does not 'understand' the contents of this import. This has some consequences one should be aware of:
 - Depending on how it's used, this could override other assets, including configuration or resources which are actively managed by the operator.
   Example: It's perfectly possible to specify a client in the realmImport that is also defined using the KeycloakClient CR. If the `ifResourceExists` field is set to `OVERWRITE`, this would lead to an endless client update loop.
-- There is no deletion mechanism. The operator does not actively manage what's specified in the the import, it simply periodically imports it. If a resource was present in the import before and is deleted afterwards, it will not be deleted by the operator.
+- There is no deletion mechanism. The operator does not actively manage what's specified in the import; It simply periodically imports it. If a resource was present in the import before and is deleted afterwards, it will not be deleted by the operator.
 
 The 'import' field should be an object matching the [PartialImportRepresentation](https://www.keycloak.org/docs-api/21.0.2/javadocs/org/keycloak/representations/idm/PartialImportRepresentation.html) class.
 
@@ -159,7 +159,7 @@ The data of the secret can be sculpted using the optional `targetSecretTemplate`
 ```
 
 #### fallbackStrategy (optional)
-The `fallbackStrategy` field can be used to control the behaviour of the operator when the client is not found in Keycloak. The following values are supported:
+The `fallbackStrategy` field can be used to control the behavior of the operator when the client is not found in Keycloak. The following values are supported:
 * `error`: The operator will fail when the client is not found in Keycloak.
 * `skip`: The operator will skip the reconciliation when the client is not found in Keycloak. This is the default value.
 
