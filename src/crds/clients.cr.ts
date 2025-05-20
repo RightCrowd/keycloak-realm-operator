@@ -10,6 +10,32 @@ import {
 } from "./_utils/genericKcInRealmResourceCr.ts";
 import { k8sApiPods } from "../k8s.ts";
 
+const clientCrdSpecificSpecs = z.object({
+  realm: z.string(),
+  clientId: z.string(),
+  name: z.string().optional(),
+  claim: z.boolean().optional(),
+  prune: z.boolean().optional(),
+  recreateOnClaim: z.boolean().optional(),
+  secret: z.object({
+    value: z.string(),
+  }).or(z.object({
+    valueFrom: z.object({
+      secretKeyRef: z.object({
+        namespace: z.string(),
+        name: z.string(),
+        key: z.string(),
+      }),
+    }),
+  })).optional(),
+  roles: z.array(z.string()).optional(),
+  scopes: z.object({
+    default: z.array(z.string()).optional(),
+    optional: z.array(z.string()).optional(),
+  }).optional(),
+  representation: z.any(),
+});
+
 type GenericKcInRealmResourceCrSpecsBase_ClientScoped =
   GenericKcInRealmResourceCrSpecsBase<"clients">;
 
@@ -155,6 +181,26 @@ class kcInRealmClientCr<
         secret,
       });
 
+      //#region Reconcile client roles
+      await this.kcClient.ensureAuthed();
+      const actualRoles = await subResourceClient.listRoles({ id, realm })
+      const desiredRoleNames = spec.roles ?? []
+      const lingeringRoles = actualRoles.filter(actualRole => !desiredRoleNames.some(desiredRoleName => actualRole.name != null && (actualRole.name === desiredRoleName)))
+      const missingRoleNames = desiredRoleNames.filter(desiredRoleName => !actualRoles.some(actualRole => actualRole.name != null && (actualRole.name === desiredRoleName)))
+
+      // Clear lingering roles
+      await this.kcClient.ensureAuthed();
+      await Promise.all(lingeringRoles.map(lingeringRole => subResourceClient.delRole({ 
+        id, realm, roleName: lingeringRole.name!
+       })))
+
+      // Create missing roles
+      await this.kcClient.ensureAuthed();
+      await Promise.all(missingRoleNames.map(missingRoleName => subResourceClient.createRole({ 
+        id, realm, name: missingRoleName
+       })))
+      //#endregion
+
       //#region Reconcile client scopes
       await this.kcClient.ensureAuthed();
       const _actualScopesArr = await Promise.all([
@@ -255,31 +301,6 @@ class kcInRealmClientCr<
     }
   };
 }
-
-const clientCrdSpecificSpecs = z.object({
-  realm: z.string(),
-  clientId: z.string(),
-  name: z.string().optional(),
-  claim: z.boolean().optional(),
-  prune: z.boolean().optional(),
-  recreateOnClaim: z.boolean().optional(),
-  secret: z.object({
-    value: z.string(),
-  }).or(z.object({
-    valueFrom: z.object({
-      secretKeyRef: z.object({
-        namespace: z.string(),
-        name: z.string(),
-        key: z.string(),
-      }),
-    }),
-  })).optional(),
-  scopes: z.object({
-    default: z.array(z.string()).optional(),
-    optional: z.array(z.string()).optional(),
-  }).optional(),
-  representation: z.any(),
-});
 
 export const clientsCr = new kcInRealmClientCr({
   crdIdentifiers: {
