@@ -70,8 +70,8 @@ export class KeycloakClient {
       return;
     }
     const accessToken = this.client.accessToken!;
-    const expirationDate = new Date(jwtDecode(accessToken).exp!);
-    if (new Date().getTime() > expirationDate.getTime() - 5 * 60 * 1000) {
+    const expirationDate = new Date(jwtDecode(accessToken).exp! * 1000);
+    if (new Date().getTime() > expirationDate.getTime() - 10 * 1000) {
       logger.log("Refreshing KC token");
       await this.authenticate(this.client.refreshToken);
     }
