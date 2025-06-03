@@ -43,13 +43,23 @@ export class KeycloakClient {
 
   private async authenticate(refreshToken?: string) {
     try {
+      let requiresPasswordAuth = refreshToken == null;
       if (refreshToken) {
-        await this.client.auth({
-          grantType: "refresh_token",
-          clientId: "admin-cli",
-          refreshToken,
-        });
-      } else {
+        try {
+          await this.client.auth({
+            grantType: "refresh_token",
+            clientId: "admin-cli",
+            refreshToken,
+          });
+        } catch (error) {
+          logger.log(
+            "Failed to refresh Keycloak token, falling back to password auth",
+            error
+          );
+          requiresPasswordAuth = true;
+        }
+      }
+      if (requiresPasswordAuth) {
         await this.client.auth({
           username: getConfig().KEYCLOAK_USERNAME,
           password: getConfig().KEYCLOAK_PASSWORD,
