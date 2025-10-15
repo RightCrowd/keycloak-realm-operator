@@ -54,7 +54,7 @@ export class KeycloakClient {
         } catch (error) {
           logger.log(
             "Failed to refresh Keycloak token, falling back to password auth",
-            error
+            error,
           );
           requiresPasswordAuth = true;
         }
