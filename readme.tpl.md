@@ -1,7 +1,10 @@
 # Keycloak Realm Operator
 A Kubernetes operator for managing resources in Keycloak; The project aims to enhance Keycloak's integration with Kubernetes and to consequently allow the definition of Keycloak resources in a (more) declarative way.
 
-> ⚠️ This is a WIP project.
+> ⚠️ **DEPRECATED**
+> This project is deprecated. It can still be used as is, but it will not receive any further updates.
+> There are multiple similar projects out there, but we weren't happy with any of them, which is why we started this one. This changed with the discovery of [Crossplane](https://www.crossplane.io/), and the [Crossplane Keycloak Provider](https://github.com/crossplane-contrib/provider-keycloak).
+> It solved all of our needs and more. We highly recommend checking it out as a replacement for this project.
 
 While there is a little bit of overlap with the [Keycloak Operator](https://www.keycloak.org/operator/installation), this project mostly focusses on different concerns and can perfectly be used in conjunction with the Keycloak Operator (which is more focused on the deployment of Keycloak _itself_).
 
